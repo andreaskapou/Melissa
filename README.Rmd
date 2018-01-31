@@ -7,3 +7,14 @@ __Melissa__ (MEthyLation Inference for Single cell Analysis), is a Bayesian hier
 The probabilistic graphical representation of the Melissa model is shown below:
 ![Probabilistic graphical representation of the Melissa model](analysis/model/figures/melissa-model-small.png)
 
+## Project structure
+
+The code is structured as follows
+
+* __analysis__ folder: Contains Rmd files for generating the final figures for synthetic and real data analysis. It also contains the `melissa_model.Rmd` file, which gives an extensive explanation of the model with all the mathematical derivations.
+* __imputation__ folder: Contains all required scripts for performing imputation on real and synthetic data.
+* __lib__ folder: Contains the `Melissa` model implementation both in VB and Gibbs, also has helper functions and plotting functions.
+* __model-efficiency__ folder: Contains scripts for measuring model efficiency between VB and Gibbs implementations.
+* __model-selection__ folder: Contains scripts for performing Bayesian model selection.
+* __preprocessing__ folder: Contains scripts for pre-processing the real data of [Angermueller et. al. (2016)](https://www.nature.com/articles/nmeth.3728).
+* __test__ folder: Contains scripts for run quickly running `Melissa` obn small synthetic data.
