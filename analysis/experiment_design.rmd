@@ -1,0 +1,131 @@
+---
+title: "Melissa model analysis"
+author:
+- name: Andreas C. Kapourani
+  affiliation: School of Informatics, University of Edinburgh, UK
+output: 
+  BiocStyle::html_document:
+    toc_float: true 
+  fig_width: 12 
+  fig_height: 10 
+---
+
+
+# Synthetic data analysis
+## Imputation performance
+Use the following parameter settings for measuring model performance on all parameters and latent variables:
+
+* `N = 200` (Number of cells)
+* `M = 100` (Number of genes)
+* `K = 4` (Number of clusters)
+* `pi_k = (.2, .4, .15, .25)` (Mixing proportions)
+* `vb_max_iter = 300` (VB iterations)
+* `total_sims = 10` (Total simulations)
+
+### Change CpG coverage
+Function for generating synthetic data: `encode_synthetic_data.R`
+
+Parameters
+
+* `cluster_var = 0.5`                (% of regions that are dissimilar across clusters)
+* `data_train_prcg = 0.3`            (% of data to keep fully for training)
+* `region_train_prcg = 1`            (% of regions kept for training)
+* `cpg_train_prcg = seq(.1, .9, .1)` (% of CpGs kept for training in each region)
+
+### Change cluster dissimilarity 
+We set a specific value for the `cpg_train_prcg = 0.4` and change the dissimilarity percentage to show the robustnes of the model across different dissimilarity levels.
+
+Function for generating synthetic data: `encode_synthetic_data_dissimilarity.R`
+
+Parameters
+
+* `cluster_var = seq(0, 1, .1)`     (% of regions that are dissimilar across clusters)
+* `data_train_prcg = 0.3`           (% of data to keep fully for training)
+* `region_train_prcg = 1`           (% of regions kept for training)
+* `cpg_train_prcg = 0.4`            (% of CpGs kept for training in each region)
+
+### Compare with different models
+* BPRMeth profile
+* BPRMeth rate
+* Melissa rate
+* Random Forests (RF)
+
+## Cluster performance
+
+From the above analysis we obtain the posterior probability of each cell belonging to each cluster and then we measure cluster performance using the Adjusted Rand Index (ARI).
+
+## Model selection
+On the same data run 10 simulations with K = 10 clusters and check when the model returns the actual 4 clusters that generated the data, file `model-selection.R`. To obtain a better understanding on the model selection from the variational apprpoximation we use a broad and strict prior over the weights i.e.
+
+Broad (uninformative) prior
+
+* `delta_0 <- rep(3, K)`      (Dirichlet prior)
+* `alpha_0 <- 0.5`            (Gamma prior)
+* `beta_0  <- 10`             (Gamma prior)
+
+Strict (shrinkage) prior
+
+* `delta_0 <- rep(1e-2, K)`      (Dirichlet prior)
+* `alpha_0 <- 2`                 (Gamma prior)
+* `beta_0  <- 0.5`               (Gamma prior)
+
+
+## VB efficiency
+Run VB model and Gibbs model on synthetic data (file `model-efficiency.R`) and show the efficiency of the VB model
+
+Params:
+
+* `N = c(50, 100, 200, 500, 1000, 2000)` (Number of cells)
+* `M = 200`                              (Number of genes)
+* `K = 3`                                (Number of clusters)
+* `pi_k = (.3, .4, .3)`                  (Mixing proportions)
+* `vb_max_iter = 400`                    (VB iterations)
+* `gibbs_nsim = 3000`                    (VB iterations)
+* `total_sims = 5`                       (Total simulations)
+
+
+# Mouse ESCs dataset
+
+### Pre-processing
+Steps for pre-processing methylation data:
+
+* Create different genomic region windows for promoters: 3kb, 5kb, 10kb . Regarding active enhancers, super enhancers and Nanog regions keep only those whose annotation is larger than 1kb region. Finally keep regions with at least 3 CpGs coverage, function `process_genomic_regions.R`.
+* Filter processed genomic regions using the `filter_region_met.R` function, which will keep regions with at least 10 CpG coverage and that have variability across cells. More specifically:
+* For __3kb__ region:
+    + `cov = 10`
+    + `met_sd = 0.2`
+    + `rna_var = 5`
+* For __5kb__ region:
+    + `cov = 10`
+    + `met_sd = 0.2`
+    + `rna_var = 5`
+* For __10kb__ region:
+    + `cov = 15`
+    + `met_sd = 0.2`
+    + `rna_var = 5`
+* For __active enhancers__ region:
+    + `cov = 10`
+    + `met_sd = 0.2`
+    + `region_annot > 1000bp`
+* For __super enhancers__ region:
+    + `cov = 10`
+    + `met_sd = 0.2`
+    + `region_annot > 1000bp`
+* For __Nanog__ region:
+    + `cov = 10`
+    + `met_sd = 0.2`
+    + `region_annot > 1000bp`
+    + The remaining regions were broaden to +/-2.5kb regions, since after filtering the number of regions was really low.
+    
+Finally, we kept only regions that had 10 CpGs coverage across 50% of the cells, so we could test the assumption of information sharing, and also have an adequate amount of information when inferring methylation states.
+
+### Imputation test
+
+For imputation we use the following parameters settings
+
+* `K = 6` (Number of clusters)
+* `filt_region_cov = 0.5` (Filter genes that have low coverage across cells)
+* `data_train_prcg = 0.4` (% of data that will be used fully for training set)
+* `region_train_prcg = 0.95` (% of samples to keep for training, i.e. some genes will have no coverage for a given cell.)
+* `cpg_train_prcg = 0.5` (% of CpGs to keep for training at each region/cell)
+* `total_sims = 10` (Total simulations)
