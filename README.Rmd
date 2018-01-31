@@ -17,4 +17,4 @@ The code is structured as follows
 * __model-efficiency__ folder: Contains scripts for measuring model efficiency between VB and Gibbs implementations.
 * __model-selection__ folder: Contains scripts for performing Bayesian model selection.
 * __preprocessing__ folder: Contains scripts for pre-processing the real data of [Angermueller et. al. (2016)](https://www.nature.com/articles/nmeth.3728).
-* __test__ folder: Contains scripts for run quickly running `Melissa` obn small synthetic data.
+* __test__ folder: Contains scripts for run quickly running `Melissa` on small synthetic data.
