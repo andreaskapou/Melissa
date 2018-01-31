@@ -64,7 +64,7 @@ imputation_analysis <- function(X, opts){
     auc_mean <- unlist(auc_mean@y.values)
     message(auc_mean)
 
-    obj <- list(bpr_prof_fit = scvb_prof, bpr_mean_fit = scvb_mean,
+    obj <- list(melissa_prof = scvb_prof, melissa_mean = scvb_mean,
                 eval_perf = eval_perf, opts = opts)
     return(obj)
 }
@@ -145,7 +145,7 @@ print(date())
 message("Storing results...")
 ##----------------------------------------------------------------------
 obj <- list(model = model, io = io, opts = opts)
-saveRDS(obj, file = paste0(io$out_dir, "final_joint_sim", opts$total_sims,
+saveRDS(obj, file = paste0(io$out_dir, "final_melissa_sim", opts$total_sims,
                            "_", io$data_file,
                            "_cov", io$cov,
                            "_sd", io$sd,
