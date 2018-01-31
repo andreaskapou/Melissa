@@ -60,7 +60,7 @@ melissa_var_analysis <- function(opts, sim){
         message(auc_mean)
         i <- i + 1 # Increase counter
     }
-    obj <- list(melissa_prof = melissa_prof, melissa_mean = melissa_mean,
+    obj <- list(melissa_prof = melissa_prof, melissa_rate = melissa_mean,
                 eval_perf = eval_perf, opts = opts)
     return(obj)
 }

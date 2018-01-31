@@ -1,0 +1,355 @@
+---
+title: "Melissa - Real data analysis"
+author:
+- name: Andreas C. Kapourani
+  affiliation: School of Informatics, University of Edinburgh, UK
+  email: c.a.kapourani or kapouranis.andreas@gmail.com
+- name: Guido Sanguinetti
+  affiliation: School of Informatics, University of Edinburgh, UK
+  email: G.Sanguinetti@ed.ac.uk
+output:
+  BiocStyle::html_document:
+    toc_float: true
+---
+
+```{r echo=FALSE, include=FALSE}
+suppressPackageStartupMessages(library(BPRMeth))
+suppressPackageStartupMessages(library(purrr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(cowplot))
+suppressPackageStartupMessages(library(gridExtra))
+suppressPackageStartupMessages(library(reshape2))
+suppressPackageStartupMessages(library(grid))
+suppressPackageStartupMessages(library(ROCR))
+suppressPackageStartupMessages(library(scales))
+suppressPackageStartupMessages(library(data.table))
+suppressPackageStartupMessages(library(ggfortify))
+suppressPackageStartupMessages(library(stringi))
+suppressPackageStartupMessages(library(proxy))
+suppressPackageStartupMessages(library(RColorBrewer))
+```
+
+```{r echo=FALSE, include=FALSE}
+# Define ggplot2 theme for line plots
+line_theme <- function(){
+  p <- theme(
+      plot.title = element_text(size = 20, face = 'bold', 
+                                margin = margin(0,0,0,0), hjust = 0.5),
+      axis.text = element_text(size = rel(1.10), color = 'black'),
+      axis.title = element_text(size = rel(1.15), color = 'black'),
+      axis.title.y = element_text(margin = margin(0,15,0,0)),
+      axis.title.x = element_text(margin = margin(12,0,0,0)),
+      axis.ticks.x = element_line(colour = "black", size = rel(0.8)),
+      axis.ticks.y = element_blank(),
+      legend.position = "left",
+      legend.key.size = unit(1.9, 'lines'),
+      legend.title = element_text(size = 24, face = 'bold'),
+      legend.text = element_text(size = 19),
+      panel.border = element_blank(),
+      panel.grid.major = element_line(colour = "gainsboro"),
+      panel.background = element_blank()
+    )
+  return(p)
+}
+
+
+# Define ggplot2 theme for line plots
+boxplot_theme <- function(){
+  p <- theme(
+      plot.title = element_text(size = 24, face = 'bold', 
+                                margin = margin(0,0,0,0), hjust = 0.5),
+      axis.text = element_text(size = rel(1.15), color = 'black'),
+      axis.title = element_text(size = rel(1.55), color = 'black'),
+      axis.title.y = element_text(margin = margin(0,15,0,0)),
+      axis.title.x = element_text(margin = margin(0,0,0,0)),
+      axis.ticks.x = element_line(colour = "black", size = rel(0.8)),
+      axis.ticks.y = element_blank(),
+      legend.position = "left",
+      legend.key.size = unit(1.9, 'lines'),
+      legend.title = element_text(size = 24, face = 'bold'),
+      legend.text = element_text(size = 19),
+      panel.border = element_blank(),
+      panel.grid.major = element_line(colour = "gainsboro"),
+      panel.background = element_blank()
+    )
+  return(p)
+}
+
+
+
+ggplot_cluster_profiles <- function(cluster_obj, title = "Clustered profiles",
+                                x_axis = "genomic region", y_axis = "met level",
+                                x_labels = c("-7Kb", "", "Centre", "", "+7Kb"),
+                                ...) {
+    # Test data
+    aes_xs <- seq(from = -1, to = 1, by = 0.01)
+    # Number of clusters
+    K <- NCOL(cluster_obj$W)
+    ys <- matrix(0, ncol = K, nrow = length(aes_xs))
+    # For RMD CHECK to pass without NOTEs
+    aes_ys = Cluster <- NULL
+    ys_low = ys_high <- NULL
+    if (methods::is(cluster_obj, "cluster_profiles_mle")) {
+        if (methods::is(cluster_obj, "cluster_profiles_mle_gaussian")) {
+            for (k in 1:K) {
+                ys[, k] <- eval_function(cluster_obj$basis, aes_xs,
+                                         cluster_obj$W[,k])
+            }
+        }else{
+            for (k in 1:K) {
+                ys[, k] <- eval_probit_function(cluster_obj$basis, aes_xs,
+                                         cluster_obj$W[,k])
+            }
+        }
+    }else if (methods::is(cluster_obj, "cluster_profiles_vb")) {
+        tmp <- BPRMeth:::.predictive_cluster_profile(cluster_obj, aes_xs)
+        ys <- tmp$W_pred
+        if (methods::is(cluster_obj, "cluster_profiles_vb_binomial") ||
+            methods::is(cluster_obj, "cluster_profiles_vb_bernoulli")) {
+            ys_low <- ys - ys*(1 - ys);
+            ys_high <- ys + ys*(1 - ys)
+        }else if (methods::is(cluster_obj, "infer_profiles_vb_gaussian")) {
+            ys_low <- ys - 2 * tmp$W_sd_pred;
+            ys_high <- ys + 2 * tmp$W_sd_pred
+        }
+    }else{
+        stop("No plotting function for this model!")
+    }
+
+    dt <- data.table::data.table(aes_xs = numeric(), aes_ys = numeric(),
+            ys_low = numeric(), ys_high = numeric(), Cluster = numeric())
+    if (methods::is(cluster_obj, "cluster_profiles_vb") ||
+        methods::is(cluster_obj, "infer_profiles_gibbs") ) {
+        for (k in 1:K) {
+            dt <- rbind(dt, data.table::data.table(aes_xs = aes_xs,
+                aes_ys = ys[,k], ys_low = ys_low[,k], ys_high = ys_high[,k],
+                Cluster = as.factor(k)))
+        }
+    }else{
+        for (k in 1:K) {
+            dt <- rbind(dt, data.table::data.table(aes_xs = aes_xs,
+                                                   aes_ys = ys[,k],
+                                                   ys_low = 0, ys_high = 0,
+                                                   Cluster = as.factor(k)))
+        }
+    }
+
+    p <- ggplot(dt, aes(x = aes_xs, y = aes_ys, color = Cluster)) +
+        geom_line(size = 2)
+    if (methods::is(cluster_obj, "cluster_profiles_vb") ||
+        methods::is(cluster_obj, "infer_profiles_gibbs") ) {
+        p <- p + geom_ribbon(dt, mapping = aes(ymin = ys_low, ymax = ys_high,
+                 fill = Cluster), alpha = 0.2, size = 0.1)
+    }
+    p <- p + scale_x_continuous(limits = c(-1, 1), labels = x_labels) +
+        scale_color_brewer(palette = "Dark2") +
+        scale_fill_brewer(palette = "Dark2") +
+        labs(title = title, x = x_axis, y = y_axis) + line_theme()
+    return(p)
+}
+
+```
+
+
+<!-- # Parse and filter data -->
+```{r initial_params, echo=FALSE, include=FALSE}
+# Data
+io            <- list()
+io$script_dir <- "../"
+io$data_dir   <- "../local-data/melissa/real/imputation/"
+io$K          <- 6
+io$M          <- c(541, 1468, 2666, 745, 231, 384)
+io$cov        <- c(10, 10, 15, 10, 10, 10)
+io$basis      <- c(7, 11, 9, 7, 7, 7)
+io$cpg_prcg   <- 0.5
+io$data_prcg  <- 0.4
+io$reg_prcg   <- 0.95
+io$filter     <- 0.5
+R.utils::sourceDirectory(paste0(io$script_dir, "lib/"), modifiedOnly = FALSE)
+```
+
+<!-- # Parse and filter data -->
+```{r load_real_data, echo=FALSE, include=FALSE, warning=FALSE, message=FALSE}
+# Different CpG coverages
+io$regions <- c("prom3k", "prom5k", "prom10k", "active_enhancers", "Nanog", "super_enhancers")
+
+dt_analysis <- data.table(region = character(), auc_melissa = numeric(), auc_melissa_rate = numeric(), 
+                          auc_indep_prof = numeric(), auc_indep_rate = numeric(), auc_rf = numeric())
+model_analysis <- data.table(region = character(), melissa = numeric(), melissa_rate = numeric())
+iter <- 1
+for (region in io$regions) {
+   # Load joint analysis results
+   dt_joint <- readRDS(paste0(io$data_dir, "final_joint_sim10_", region, 
+                              "_cov", io$cov[iter], "_sd0.2_K", io$K, "_M", io$M[iter], 
+                              "_basis", io$basis[iter], "_dataPrcg", io$data_prcg, 
+                              "_regionPrcg", io$reg_prcg, "_cpgPrcg", io$cpg_prcg,
+                              "_filter", io$filter, "_gene_var5", ".rds"))
+   if (region %in% c("prom5k")) {
+       # Load independent analysis results
+       dt_indep <- readRDS(paste0(io$data_dir, "final_indep_sim10_", region,
+                                  "_cov", io$cov[iter], "_sd0.2_M", io$M[iter], 
+                                  "_basis", 9, "_dataPrcg", io$data_prcg, 
+                                  "_regionPrcg", io$reg_prcg, "_cpgPrcg", io$cpg_prcg, 
+                                  "_filter", io$filter, "_gene_var5", ".rds"))
+   }else{
+        # Load independent analysis results
+        dt_indep <- readRDS(paste0(io$data_dir, "final_indep_sim10_", region, 
+                              "_cov", io$cov[iter], "_sd0.2_M", io$M[iter], 
+                              "_basis", io$basis[iter], "_dataPrcg", io$data_prcg, 
+                              "_regionPrcg", io$reg_prcg, "_cpgPrcg", io$cpg_prcg, 
+                              "_filter", io$filter, "_gene_var5", ".rds"))
+       
+   }
+   
+   # Load RF analysis results
+   dt_rf <- readRDS(paste0(io$data_dir, "final_rf_indep_sim10_", region, 
+                              "_cov", io$cov[iter], "_sd0.2_M", io$M[iter],
+                              "_dataPrcg", io$data_prcg, "_regionPrcg", io$reg_prcg, 
+                              "_cpgPrcg", io$cpg_prcg, "_filter", io$filter,
+                              "_gene_var5", ".rds"))
+   
+   for (i in 1:length(dt_joint$model)) {
+       dt <- data.table(region = region, 
+                     auc_melissa = performance(prediction(dt_joint$model[[i]]$eval_perf$eval_prof$pred_obs, 
+                               dt_joint$model[[i]]$eval_perf$eval_prof$act_obs), "auc")@y.values[[1]],
+                     auc_melissa_rate = performance(prediction(dt_joint$model[[i]]$eval_perf$eval_mean$pred_obs, 
+                               dt_joint$model[[i]]$eval_perf$eval_mean$act_obs), "auc")@y.values[[1]],
+                     auc_indep_prof = performance(prediction(dt_indep$model[[i]]$eval_perf$eval_prof$pred_obs, 
+                               dt_indep$model[[i]]$eval_perf$eval_prof$act_obs), "auc")@y.values[[1]],
+                     auc_indep_rate = performance(prediction(dt_indep$model[[i]]$eval_perf$eval_mean$pred_obs, 
+                               dt_indep$model[[i]]$eval_perf$eval_mean$act_obs), "auc")@y.values[[1]],
+                     auc_rf = performance(prediction(dt_rf$model[[i]]$eval_perf$pred_obs, 
+                               dt_rf$model[[i]]$eval_perf$act_obs), "auc")@y.values[[1]])
+    # Add results to final data.table
+    dt_analysis <- rbind(dt_analysis, dt)
+    
+    dt <- data.table(region = region,
+                     melissa = length(which(dt_joint$model[[i]]$melissa_prof$delta > 4)),
+                     melissa_rate = length(which(dt_joint$model[[i]]$melissa_rate$delta > 4)))
+    
+    model_analysis <- rbind(model_analysis, dt)
+   }
+   iter <- iter + 1
+}
+rm(iter, dt, i, dt_rf, dt_indep, dt_joint)
+```
+
+
+# AUC performance 
+```{r auc_plot_cpg, fig.wide=TRUE, echo=FALSE, include=TRUE, warning=FALSE, fig.width=14.3, fig.height=7}
+set.seed(15)
+dt_boxplot <- copy(dt_analysis)
+
+dt_boxplot <- dt_boxplot[, c("auc_melissa", "auc_melissa_rate", "auc_indep_prof", "auc_indep_rate", "auc_rf") := 
+                             list(auc_melissa + rnorm(.N, 0, 0.01), auc_melissa_rate + rnorm(.N, 0, 0.01),
+                                  auc_indep_prof + rnorm(.N, 0, 0.01), auc_indep_rate + rnorm(.N, 0, 0.01),
+                                  auc_rf + rnorm(.N, 0, 0.01))]
+
+dt_boxplot <- dt_boxplot %>% setnames(c("region", "auc_melissa", "auc_melissa_rate", "auc_indep_prof", "auc_indep_rate", "auc_rf"), c("x", "Melissa", "Melissa Rate", "Indep Profile", "Indep Rate", "RF")) %>% .[, x := as.factor(x)] %>% melt(variable.name = "Model", value.name = "y")  %>% .[, x := factor(x, levels = c("prom10k", "prom5k", "prom3k", "Nanog", "super_enhancers", "active_enhancers"))]
+
+p_auc_box <- ggplot(dt_boxplot, aes(x = x, y = y, fill = Model)) +
+  geom_boxplot(alpha = 0.8, outlier.shape = NA) +
+  scale_fill_manual(values = c("red3", "cornflowerblue", "chocolate2", "green4", "dodgerblue4")) + 
+  scale_x_discrete(labels = c("prom3k" = "Promoter 3kb", "prom5k" = "Promoter 5kb", "prom10k" = "Promoter 10kb", "active_enhancers" = "Active enhancers", "Nanog" = "Nanog", "super_enhancers" = "Super enhancers")) +
+  scale_y_continuous(breaks = pretty_breaks(n = 6)) +
+  labs(title = "", x = NULL, y = "AUC") +
+  boxplot_theme()
+print(p_auc_box)
+```
+
+
+# Example of clustered methylation profiles
+```{r load_prom_sim_data, fig.wide=TRUE, echo=FALSE, include=TRUE, warning=FALSE, fig.height=5, fig.width=10}
+met_file <- paste0("../local-data/melissa/met/filtered_met/prom3k", "_cov", 
+                   io$cov[1], "_sd0.2_gene_var5.rds")
+met_dt <- readRDS(met_file)
+met <- met_dt$met
+opts <- list(N = length(met), M = length(met[[1]]), filt_region_cov = 0.5)
+##----------------------------------------------------------------------
+# message("Filtering low covered regions across cells...")
+##----------------------------------------------------------------------
+non_cov_reg <- vector(mode = "numeric")
+for (m in 1:opts$M[1]) { # Iterate over each region
+    # Number of cells covered in each source
+    cov_cells <- length(which(!is.na(lapply(met, "[[", m))))
+    # If no coverage
+    if (length(cov_cells) == 0) {
+        non_cov_reg <- c(non_cov_reg, m)
+    }else{
+        # If coverage does not pass threshold, filter again
+        if (cov_cells/opts$N < opts$filt_region_cov) {
+            non_cov_reg <- c(non_cov_reg, m)
+        }
+    }
+}
+met_dt$anno_region <- met_dt$anno_region[-non_cov_reg]  # Filter anno regions
+met_dt$annos       <- met_dt$annos[-non_cov_reg]        # Filter annotation data
+met_dt$rna         <- met_dt$rna[-non_cov_reg,]         # Filter RNA data
+for (n in 1:opts$N) {                                   # Filter met data
+    met[[n]] <- met[[n]][-non_cov_reg]
+    met[[n]] <- unname(met[[n]])
+}
+dt_joint <- readRDS(paste0(io$data_dir, "final_joint_sim10_", "prom3k", 
+                              "_cov", io$cov[1], "_sd0.2_K", 3, "_M", io$M[1], 
+                              "_basis", io$basis[1], "_dataPrcg", io$data_prcg, 
+                              "_regionPrcg", io$reg_prcg, "_cpgPrcg", io$cpg_prcg,
+                              "_filter", io$filter, "_gene_var5", ".rds"))
+
+# Profiles for each region and cell
+simulation <- 1
+w_prof <- dt_joint$model[[simulation]]$bpr_prof_fit$W
+# Number of regions
+M <- NROW(w_prof)
+dists <- vector("numeric", length = M)
+for (m in 1:M) {
+  dists[m] <- sum(dist(t(pnorm(w_prof[m, ,])), method = "euclidean"))
+}
+Order <- order(dists, decreasing = TRUE)
+dists <- dists[Order]
+
+final <- c(40, 82, 109)
+for (t in final) {
+    obj <- list(W = w_prof[Order[t],,], W_Sigma = dt_joint$model[[simulation]]$bpr_prof_fit$W_Sigma[[Order[t]]],
+            basis = dt_joint$model[[simulation]]$bpr_prof_fit$basis)
+class(obj) <- c("cluster_profiles_vb_bernoulli", "cluster_profiles_vb")
+ p_prof <- plot_cluster_profiles(cluster_obj = obj, title = paste0("Gene ", met_dt$annos$gene_name[Order[t]]),
+                                 x_labels = c("-3Kb","", "TSS", "", "+3Kb")) +
+     theme(legend.position = "left")
+ print(p_prof)
+}
+
+x_lab <- c("-1.5Kb","", "TSS", "", "+1.5Kb")
+obj <- list(W = w_prof[Order[final[1]],,], W_Sigma = dt_joint$model[[simulation]]$bpr_prof_fit$W_Sigma[[Order[final[1]]]],
+            basis = dt_joint$model[[simulation]]$bpr_prof_fit$basis)
+class(obj) <- c("cluster_profiles_vb_bernoulli", "cluster_profiles_vb")
+hal_plot <- ggplot_cluster_profiles(cluster_obj = obj, title = paste0("Gene ", met_dt$annos$gene_name[Order[final[1]]]),
+                                 x_labels = x_lab) + theme(legend.position = "none")
+
+obj <- list(W = w_prof[Order[final[2]],,], W_Sigma = dt_joint$model[[simulation]]$bpr_prof_fit$W_Sigma[[Order[final[2]]]],
+            basis = dt_joint$model[[simulation]]$bpr_prof_fit$basis)
+class(obj) <- c("cluster_profiles_vb_bernoulli", "cluster_profiles_vb")
+tekt1_plot <- ggplot_cluster_profiles(cluster_obj = obj, title = paste0("Gene ", met_dt$annos$gene_name[Order[final[2]]]),
+                                 x_labels = x_lab) + theme(legend.position = "left")
+
+obj <- list(W = w_prof[Order[final[3]],,], W_Sigma = dt_joint$model[[simulation]]$bpr_prof_fit$W_Sigma[[Order[final[3]]]],
+            basis = dt_joint$model[[simulation]]$bpr_prof_fit$basis)
+class(obj) <- c("cluster_profiles_vb_bernoulli", "cluster_profiles_vb")
+dgke_plot <- ggplot_cluster_profiles(cluster_obj = obj, title = paste0("Gene ", met_dt$annos$gene_name[Order[final[3]]]),
+                                 x_labels = x_lab) + theme(legend.position = "none")
+```
+
+# Final plot
+```{r joint_plot, fig.wide=TRUE, eval=TRUE, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE, fig.height=8, fig.width=14.5}
+
+top_row <- plot_grid(p_auc_box, labels = c("a"), label_size = 25, ncol = 1, nrow = 1, rel_widths = c(1))
+bottom_row <- plot_grid(tekt1_plot, hal_plot, dgke_plot, labels = c("b", "", ""), 
+                        label_size = 25, ncol = 3, nrow = 1, rel_widths = c(1.27, 1, 1))
+final_fig <- plot_grid(top_row, bottom_row, labels = c("", ""), label_size = 25, ncol = 1, nrow = 2, 
+                       rel_heights = c(1.35, 1), rel_widths = c(1, 1))
+print(final_fig)
+# pdf(file=paste0("out/analysis-real.pdf"), width = 15, height = 9, useDingbats = FALSE)
+# final_fig
+# dev.off()
+```
+
+

@@ -64,7 +64,7 @@ imputation_analysis <- function(X, opts){
     auc_mean <- unlist(auc_mean@y.values)
     message(auc_mean)
 
-    obj <- list(melissa_prof = scvb_prof, melissa_mean = scvb_mean,
+    obj <- list(melissa_prof = scvb_prof, melissa_rate = scvb_mean,
                 eval_perf = eval_perf, opts = opts)
     return(obj)
 }

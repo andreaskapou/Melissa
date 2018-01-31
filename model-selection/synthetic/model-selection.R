@@ -11,7 +11,7 @@ set.seed(123)
 
 joint_dissimilarity_analysis <- function(opts, sim){
     # Initialize lists
-    bpr_prof_fit = eval_perf <- vector("list", length = length(opts$cluster_var))
+    melissa = eval_perf <- vector("list", length = length(opts$cluster_var))
     i <- 1
     # Iterate
     for (m in opts$cluster_var) {
@@ -29,7 +29,7 @@ joint_dissimilarity_analysis <- function(opts, sim){
                                    is_kmeans = opts$is_kmeans, vb_init_nstart = opts$vb_init_nstart,
                                    vb_init_max_iter = opts$vb_init_max_iter, is_parallel = opts$is_parallel,
                                    no_cores = opts$no_cores, is_verbose = FALSE)
-        bpr_prof_fit[[i]] <- bpr_prof_res
+        melissa[[i]] <- bpr_prof_res
 
         ##----------------------------------------------------------------------
         #message("Evaluating model performance...")
@@ -48,7 +48,7 @@ joint_dissimilarity_analysis <- function(opts, sim){
         message(auc_prof)
         i <- i + 1 # Increase counter
     }
-    obj <- list(bpr_prof_fit = bpr_prof_fit, eval_perf = eval_perf, opts = opts)
+    obj <- list(melissa = melissa, eval_perf = eval_perf, opts = opts)
     return(obj)
 }
 
