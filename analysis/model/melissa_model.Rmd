@@ -26,9 +26,10 @@ For many models, this evidence integral is unavailable in closed form or require
 
 ## The evidence lower bound (ELBO)
 In variational inference, we specific a family $\mathcal{Q}$ of densities over the latent variables. Each $q(\mathbf{Z}) \in \mathcal{Q}$ is a __candidate approximation__ to the exact posterior density. Our goal is to find the best candidate, i.e. the one that __minimizes the Kulback-Leibler ($\mathcal{KL}$) divergence__ to the exact posterior. Hence, inference now amounts to solving the following optimization problem
+
 $$
 \begin{aligned}
-q^{*}(Z) & = \underset{q(\mathbf{Z}) \in \mathcal{Q}} {\mathrm{argmax}}\; \mathcal{KL}(q(\mathbf{Z})\; || \; p(\mathbf{Z} | \mathbf{X}))
+q^{*}(Z) & = \underset{q(\mathbf{Z}) \in \mathcal{Q}} {\mathrm{argmin}}\; \mathcal{KL}(q(\mathbf{Z})\; || \; p(\mathbf{Z} | \mathbf{X}))
 \end{aligned}
 $$
 Note that the complexity of the family $\mathcal{Q}$ determines the complexity of this optimization. Let us observe what is the $\mathcal{KL}$ divergence between these two distributions
