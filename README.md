@@ -6,7 +6,7 @@ __Melissa__ (MEthyLation Inference for Single cell Analysis), is a Bayesian hier
 
 <!--- ![Melissa model overview](analysis/model/figures/melissa.png) -->
 
- <img src="analysis/model/figures/melissa.png" alt="" style="width: 200px;"/> 
+<img src="analysis/model/figures/melissa.png" alt="" style="width: 50px;"/> 
 
 
 The probabilistic graphical representation of the Melissa model is shown below:
@@ -22,7 +22,7 @@ The code is structured as follows
 * __lib__ folder: Contains the `Melissa` model implementation both in VB and Gibbs, also includes helper and plotting functions.
 * __model-efficiency__ folder: Contains scripts for measuring model efficiency between VB and Gibbs implementations.
 * __model-selection__ folder: Contains scripts for performing Bayesian model selection.
-* __preprocessing__ folder: Contains scripts for pre-processing (synthetic and real data sets).
+* __preprocessing__ folder: Contains scripts for pre-processing (synthetic and real datasets).
 * __test__ folder: Contains test scripts for quickly running `Melissa`.
 
 ### Melissa dependence
