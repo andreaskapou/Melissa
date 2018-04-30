@@ -9,10 +9,10 @@ suppressPackageStartupMessages(library(GenomicRanges))
 
 #
 # # Data files
-io <- list(anno_name = "active_enhancers")
-io$base_dir   <- "../local-data/mt-seq/"
+io <- list(dataset = "mt-seq")
+io$base_dir   <- paste0("../local-data/", io$dataset)
 io$out_dir    <- paste0(io$base_dir, "/met/processed/")
-io$annos_file <- paste0(io$base_dir, "/annotations/", io$anno_name, ".bed")
+io$annos_file <- paste0(io$base_dir, "/annotations/Mus_musculus.GRCm38.75.protein.coding.bed")
 io$rna_file   <- paste0(io$base_dir, "/rna/parsed/GSE74534_RNA-seq_normalized_counts.txt.gz")
 io$met_dir    <- paste0(io$base_dir, "/met/parsed")
 io$met_files  <- list.files(io$met_dir, pattern = "*.gz", full.names = TRUE)
@@ -33,27 +33,19 @@ rna <- fread(input = sprintf("zcat < %s", io$rna_file), sep = "\t",
     setnames(c("ens_id"), c("id")) %>% setkey(id)
 
 #
-# # Read annotation file
+# # Read annotation file and create a GRanges object
 annos <- fread(input = io$annos_file, sep = "\t", header = FALSE, stringsAsFactors = FALSE,
-               showProgress = FALSE) %>%
-    setnames(c("chr", "start", "end", "strand", "id", "anno")) %>%
-    .[, c("anno", "chr") := list(NULL, as.factor(paste0("chr", chr)))] %>%
-    .[ (end - start) >= 1000] %>%
-    setkey(chr, start, end) #%>% GRanges()
+               showProgress = FALSE, select = c(1,2,3,4,6,10)) %>%
+    setnames(c("chr", "start", "end", "id", "strand", "gene_name")) %>%
+    .[, gene_name := gsub(".* gene_name \"([^;]+)\";.*", "\\1", gene_name)] %>%
+    .[, chr := as.factor(paste0("chr", chr))] %>% subset(id %in% rna$id) %>%
+    setkey(chr, start, end) %>% GRanges()
 
-# Create annotation region
-anno_region <- copy(annos)
-anno_region <- anno_region %>% .[, centre := floor((start + end)/2) ]
-
-# Only for Nanog regions we create a larger genomic region due to sparse CpG coverage
-if (io$anno_name == "Nanog") {
-    anno_region <- anno_region[, c("start", "end") := list(centre + opts$upstream,
-                                                           centre + opts$downstream)]
-}
-# Create GRanges objects
-anno_region <- Granges(anno_region)
-annos <- GRanges(annos)
-
+#
+# # Create promoter regions
+anno_region <- create_anno_region(anno = annos, chrom_size = opts$chrom_size,
+                                  upstream = opts$upstream, downstream = opts$downstream)
+#
 # # Create methylation regions
 met <- list()
 for (m_file in io$met_files) {
@@ -79,4 +71,4 @@ rm(met_dt)
 message("Storing results...")
 obj <- list(met = met, anno_region = anno_region, annos = annos, rna = rna,
             io = io, opts = opts)
-saveRDS(obj, file = paste0(io$out_dir, "unfiltered/", io$anno_name, ".rds"))
+saveRDS(obj, file = paste0(io$out_dir, "unfiltered/prom5k.rds"))

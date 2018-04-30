@@ -6,7 +6,7 @@ if (interactive()) { setwd(dirname(parent.frame(2)$ofile)) }
 R.utils::sourceDirectory("../../lib", modifiedOnly = FALSE)
 suppressPackageStartupMessages(require(BPRMeth))
 suppressPackageStartupMessages(require(mvtnorm))
-set.seed(1234) # Teliko only
+set.seed(1234)
 
 ##------------------------
 # Initialize variables   #

@@ -33,7 +33,7 @@ melissa_obj <- melissa_vb(X = synth_data$X, K = K, basis = basis,
                         vb_max_iter = vb_max_iter, epsilon_conv = epsilon_conv,
                         is_kmeans = is_kmeans, vb_init_nstart = vb_init_nstart,
                         vb_init_max_iter = vb_init_max_iter, is_parallel = is_parallel,
-                        no_cores = no_cores, is_verbose = FALSE)
+                        no_cores = no_cores, is_verbose = TRUE)
 
 # Compute clustering assignment errors
 ari <- cluster_ari(C_true = synth_data$C_true, C_post = melissa_obj$r_nk)

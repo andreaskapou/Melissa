@@ -7,11 +7,10 @@ suppressPackageStartupMessages(library(BPRMeth))
 suppressPackageStartupMessages(library(data.table))
 suppressPackageStartupMessages(library(cowplot))
 suppressPackageStartupMessages(require(ROCR))
-
+set.seed(1)
 ##-----------------------------
 # Initialize main variables   #
 ##-----------------------------
-#set.seed(15)
 K <- 3                   # Number of clusters
 N <- 50                  # Number of cells
 M <- 30                  # Number of genomic regions
@@ -22,7 +21,7 @@ is_kmeans    <- TRUE     # Use K-means for initialization
 vb_max_iter  <- 10       # Maximum VB iterations
 epsilon_conv <- 1e-4     # Convergence threshold for VB
 vb_init_nstart <- 1      # Mini VB restarts
-vb_init_max_iter <- 4   # Mini VB max iterations
+vb_init_max_iter <- 4    # Mini VB max iterations
 is_parallel  <- TRUE     # Use parallelized version
 no_cores     <- 2        # Number of cores
 basis <- create_rbf_object(M = 4) # Basis object

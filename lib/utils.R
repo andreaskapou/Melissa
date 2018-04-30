@@ -235,7 +235,7 @@ partition_dataset <- function(X, data_train_prcg = 0.5, region_train_prcg = 0.8,
             cov_gen_ind <- which(!is.na(X[[n]]))
             # Compute the number of those promoters
             N_cov <- length(cov_gen_ind)
-            if (N_cov < 50) { message("Low genomic coverage..."); return(1) }
+            if (N_cov < 10) { message("Low genomic coverage..."); return(1) }
             pivot <- region_train_prcg * N_cov
             # These are the training data
             train_ind <- cov_gen_ind[sort(sample(N_cov, round(pivot)))]
@@ -471,4 +471,282 @@ align_cluster <- function(Z1, Z2, params = NULL, type = "mat"){
     }
     if (type == "mat") { Z2 <- Lm}
     return(list(Z2 = Z2, params = params)) # Return the aligned parameters
+}
+
+
+
+#' @title Filter regions across cells
+#'
+#' @description Filter genomic regions that have low coverage across many cells.
+#'   So we keep regions from which we can share information across cells.
+#'
+#' @param dt Input data object
+#' @param opts Options, having at least N = cells, M = regions, filt_region_cov
+#'   = threshold on % cells that have coverage for each region.
+#'
+#' @return The filtered methylation data
+#'
+filter_regions_across_cells <- function(dt, opts) {
+    ##----------------------------------------------------------------------
+    message("Filtering low covered regions across cells...")
+    ##----------------------------------------------------------------------
+    met <- dt$met
+    non_cov_reg <- vector(mode = "numeric")
+    for (m in 1:opts$M) { # Iterate over each region
+        # Number of cells covered in each source
+        cov_cells <- length(which(!is.na(lapply(met, "[[", m))))
+        # If no coverage
+        if (length(cov_cells) == 0) {
+            non_cov_reg <- c(non_cov_reg, m)
+        }else{
+            # If coverage does not pass threshold, filter again
+            if (cov_cells/opts$N < opts$filt_region_cov) {
+                non_cov_reg <- c(non_cov_reg, m)
+            }
+        }
+    }
+    dt$anno_region <- dt$anno_region[-non_cov_reg]  # Filter anno regions
+    dt$annos       <- dt$annos[-non_cov_reg]        # Filter annotation data
+    for (n in 1:opts$N) {                           # Filter met data
+        met[[n]] <- met[[n]][-non_cov_reg]
+        met[[n]] <- unname(met[[n]])
+    }
+    dt$met <- met
+    return(dt)
+}
+
+
+#' @title Melissa model imputation analysis
+#'
+#'
+melissa_imputation_analysis <- function(X, opts){
+    # Partition to training and test sets
+    dt <- partition_dataset(X = X, data_train_prcg = opts$data_train_prcg,
+                            region_train_prcg = opts$region_train_prcg,
+                            cpg_train_prcg = opts$cpg_train_prcg, is_synth = FALSE)
+    rm(X)
+    # Run CC EM algorithm
+    print("Starting Melissa model - profile")
+    scvb_prof <- tryCatch({
+        melissa_obj <- melissa_vb(X = dt$train, K = opts$K, basis = opts$basis_prof,
+                                  delta_0 = opts$delta_0, alpha_0 = opts$alpha_0, beta_0 = opts$beta_0,
+                                  vb_max_iter = opts$vb_max_iter, epsilon_conv = opts$epsilon_conv,
+                                  is_kmeans = opts$is_kmeans, vb_init_nstart = opts$vb_init_nstart,
+                                  vb_init_max_iter = opts$vb_init_max_iter, is_parallel = opts$is_parallel,
+                                  no_cores = opts$no_cores, is_verbose = TRUE)
+    }, error = function(err){
+        # error handler picks up where error was generated
+        print(paste("ERROR:  ", err)); return(NULL)
+    }) # END tryCatch
+
+    # Using methylation profiles
+    eval_prof <- eval_performance(obj = scvb_prof, test = dt$test)
+    ##----------------------------------------------------------------------
+    message("Computing AUC...")
+    ##----------------------------------------------------------------------
+    pred_prof <- prediction(eval_prof$pred_obs, eval_prof$act_obs)
+    auc_prof <- performance(pred_prof, "auc")
+    message(unlist(auc_prof@y.values))
+
+    print("Starting Melissa model - rate")
+    scvb_mean <- tryCatch({
+        melissa_obj <- melissa_vb(X = dt$train, K = opts$K, basis = opts$basis_mean,
+                                  delta_0 = opts$delta_0, alpha_0 = opts$alpha_0, beta_0 = opts$beta_0,
+                                  vb_max_iter = opts$vb_max_iter, epsilon_conv = opts$epsilon_conv,
+                                  is_kmeans = opts$is_kmeans, vb_init_nstart = opts$vb_init_nstart,
+                                  vb_init_max_iter = opts$vb_init_max_iter, is_parallel = opts$is_parallel,
+                                  no_cores = opts$no_cores, is_verbose = TRUE)
+    }, error = function(err){
+        # error handler picks up where error was generated
+        print(paste("ERROR:  ", err)); return(NULL)
+    }) # END tryCatch
+
+    ##----------------------------------------------------------------------
+    message("Computing AUC...")
+    ##----------------------------------------------------------------------
+    # Using methylation rate
+    eval_mean <- eval_performance(obj = scvb_mean, test = dt$test)
+    pred_mean <- prediction(eval_mean$pred_obs, eval_mean$act_obs)
+    auc_mean <- performance(pred_mean, "auc")
+    message(unlist(auc_mean@y.values))
+
+    eval_perf <- list(eval_prof = eval_prof, eval_mean = eval_mean)
+    obj <- list(melissa_prof = scvb_prof, melissa_rate = scvb_mean,
+                eval_perf = eval_perf, opts = opts)
+    return(obj)
+}
+
+
+#' @title Independent model imputation analysis
+#'
+#'
+indep_imputation_analysis <- function(X, opts){
+    # Partition to training and test sets
+    dt <- partition_dataset(X = X, data_train_prcg = opts$data_train_prcg,
+                            region_train_prcg = opts$region_train_prcg,
+                            cpg_train_prcg = opts$cpg_train_prcg, is_synth = FALSE)
+    rm(X)
+
+    # List of genes with no coverage for each cell
+    region_ind <- lapply(X = 1:opts$N, FUN = function(n) which(!is.na(dt$train[[n]])))
+    na_ind <- lapply(X = 1:opts$N, FUN = function(n) which(is.na(dt$train[[n]])))
+    # List of cells with no coverage for each genomic region
+    cell_ind <- lapply(X = 1:opts$M, FUN = function(m) which(!is.na(lapply(dt$train, "[[", m))))
+    # Infer MLE methylation profiles for each cell and region
+    if (opts$is_parallel) { W_vb_prof <- parallel::mclapply(X = 1:opts$N, FUN = function(n)
+        infer_profiles_mle(X = dt$train[[n]][region_ind[[n]]], model = "bernoulli",
+                           basis = opts$basis_prof, lambda = 1/10, opt_itnmax = 50)$W,
+        mc.cores = opts$no_cores)
+    }else{W_vb_prof <- lapply(X = 1:opts$N, FUN = function(n)
+        infer_profiles_mle(X = dt$train[[n]][region_ind[[n]]], model = "bernoulli",
+                           basis = opts$basis_prof, lambda = 1/10, opt_itnmax = 50)$W)
+    }
+    # Infer MLE methylation rate for each cell and region
+    if (opts$is_parallel) { W_vb_mean <- parallel::mclapply(X = 1:opts$N, FUN = function(n)
+        infer_profiles_mle(X = dt$train[[n]][region_ind[[n]]], model = "bernoulli",
+                           basis = opts$basis_mean, lambda = 1/10, opt_itnmax = 50)$W,
+        mc.cores = opts$no_cores)
+    }else{W_vb_mean <- lapply(X = 1:opts$N, FUN = function(n)
+        infer_profiles_mle(X = dt$train[[n]][region_ind[[n]]], model = "bernoulli",
+                           basis = opts$basis_mean, lambda = 1/10, opt_itnmax = 50)$W)
+    }
+    # Store data in array objects
+    W_prof <- array(data = 0, dim = c(opts$M, opts$basis_prof$M + 1, opts$N))
+    W_mean <- array(data = 0, dim = c(opts$M, 1, opts$N))
+    for (n in 1:opts$N) { # Iterate over each cell
+        # Store optimized W to an array object (genes x basis x cells)
+        W_prof[region_ind[[n]],,n] <- W_vb_prof[[n]]
+        W_mean[region_ind[[n]],,n] <- W_vb_mean[[n]]
+    }
+    # Cases when we have empty genomic regions, sample randomly from other cell
+    # methylation profiles
+    for (cell in 1:opts$N) {
+        if (length(na_ind[[cell]]) > 0) {
+            for (m in na_ind[[cell]]) {
+                ind_cell <- sample(cell_ind[[m]], 1)
+                W_prof[m, , cell] <- W_prof[m, , ind_cell]
+                W_mean[m, , cell] <- W_mean[m, , ind_cell]
+            }
+        }
+    }
+    indep_prof <- W_prof
+    indep_mean <- W_mean
+    # Evalute model performance
+    eval_prof <- eval_performance(obj = W_prof, test = dt$test, basis = opts$basis_prof)
+    eval_mean <- eval_performance(obj = W_mean, test = dt$test, basis = opts$basis_mean)
+    eval_perf <- list(eval_prof = eval_prof, eval_mean = eval_mean)
+    ##----------------------------------------------------------------------
+    message("Computing AUC...")
+    ##----------------------------------------------------------------------
+    pred_prof <- prediction(eval_prof$pred_obs, eval_prof$act_obs)
+    auc_prof <- performance(pred_prof, "auc")
+    message(unlist(auc_prof@y.values))
+    pred_mean <- prediction(eval_mean$pred_obs, eval_mean$act_obs)
+    auc_mean <- performance(pred_mean, "auc")
+    message(unlist(auc_mean@y.values))
+
+    obj <- list(indep_prof = indep_prof, indep_mean = indep_mean,
+                eval_perf = eval_perf, opts = opts)
+    return(obj)
+}
+
+
+#' @title RF model imputation analysis
+#'
+#'
+rf_indep_imputation_analysis <- function(X, opts){
+    # Partition to training and test sets
+    dt <- partition_dataset(X = X, data_train_prcg = opts$data_train_prcg,
+                            region_train_prcg = opts$region_train_prcg,
+                            cpg_train_prcg = opts$cpg_train_prcg, is_synth = FALSE)
+
+    # List of genes with no coverage for each cell
+    train_region_ind <- lapply(X = 1:opts$N, FUN = function(n) which(!is.na(dt$train[[n]])))
+    test_region_ind <- lapply(X = 1:opts$N, FUN = function(n) which(!is.na(dt$test[[n]])))
+    # List of cells with no coverage for each genomic region
+    cell_ind <- lapply(X = 1:opts$M, FUN = function(m) which(!is.na(lapply(dt$train, "[[", m))))
+    # Use RF for prediction
+
+    act_obs = pred_obs <- vector("numeric")
+    for (n in 1:opts$N) { # Iterate over the cells
+        for (m in test_region_ind[[n]]) { # Iterate over genomic regions
+            if (m %in% train_region_ind[[n]]) {
+                y <- as.factor(dt$train[[n]][[m]][,2])
+                if (length(levels(y)) == 1) {
+                    if (as.numeric(levels(y)) == 1) {
+                        dt$train[[n]][[m]] <- rbind(dt$train[[n]][[m]], c(0.1, 0))
+                    }else{
+                        dt$train[[n]][[m]] <- rbind(dt$train[[n]][[m]], c(0.1, 1))
+                    }
+                }
+                model <- randomForest::randomForest(x = dt$train[[n]][[m]][,1, drop = FALSE],
+                                                    y = as.factor(dt$train[[n]][[m]][,2]),
+                                                    ntree = 60, nodesize = 2)
+                pred_obs <- c(pred_obs, predict(object = model, newdata = dt$test[[n]][[m]][,1, drop = FALSE],
+                                                type = "prob")[,2])
+                act_obs <- c(act_obs, dt$test[[n]][[m]][,2])
+            } else{
+                # Randomly sample a different cell that has coverage and predict from its profile
+                ind_cell <- sample(cell_ind[[m]], 1)
+                y <- as.factor(dt$train[[ind_cell]][[m]][,2])
+                if (length(levels(y)) == 1) {
+                    if (as.numeric(levels(y)) == 1) {
+                        dt$train[[ind_cell]][[m]] <- rbind(dt$train[[ind_cell]][[m]], c(0.1, 0))
+                    }else{
+                        dt$train[[ind_cell]][[m]] <- rbind(dt$train[[ind_cell]][[m]], c(0.1, 1))
+                    }
+                }
+                model <- randomForest::randomForest(x = dt$train[[ind_cell]][[m]][,1, drop = FALSE],
+                                                    y = as.factor(dt$train[[ind_cell]][[m]][,2]),
+                                                    ntree = 60, nodesize = 2)
+                pred_obs <- c(pred_obs, predict(object = model, newdata = dt$test[[n]][[m]][,1, drop = FALSE],
+                                                type = "prob")[,2])
+                act_obs <- c(act_obs, dt$test[[n]][[m]][,2])
+            }
+        }
+    }
+
+    # Store evaluated performance
+    eval_perf <- list(act_obs = act_obs, pred_obs = pred_obs)
+    ##----------------------------------------------------------------------
+    message("Computing AUC...")
+    ##----------------------------------------------------------------------
+    pred_rf <- prediction(pred_obs, act_obs)
+    auc_rf <- performance(pred_rf, "auc")
+    message(unlist(auc_rf@y.values))
+
+    obj <- list(eval_perf = eval_perf, opts = opts)
+    return(obj)
+}
+
+
+#' @title DeepCpG model imputation analysis performance
+deepcpg_imputation_analysis <- function(X, opts) {
+    # Partition to training and test sets
+    dt_split <- partition_dataset(X = X, data_train_prcg = opts$data_train_prcg,
+                                  region_train_prcg = opts$region_train_prcg,
+                                  cpg_train_prcg = opts$cpg_train_prcg, is_synth = FALSE)
+
+    # List of genes with no coverage for each cell
+    test_region_ind <- lapply(X = 1:opts$N, FUN = function(n) which(!is.na(dt_split$test[[n]])))
+    act_obs = pred_obs <- vector("numeric")
+
+    for (n in 1:opts$N) { # Iterate over the cells
+        for (m in test_region_ind[[n]]) { # Iterate over genomic regions
+            act_obs <- c(act_obs, dt_split$test[[n]][[m]][,3])
+            pred_obs <- c(pred_obs, dt_split$test[[n]][[m]][,2])
+        }
+    }
+
+    ##----------------------------------------------------------------------
+    message("Computing AUC...")
+    ##----------------------------------------------------------------------
+    pred_rf <- prediction(pred_obs, act_obs)
+    auc_rf <- performance(pred_rf, "auc")
+    message(unlist(auc_rf@y.values))
+
+    # Store evaluated performance
+    eval_perf <- list(act_obs = act_obs, pred_obs = pred_obs)
+    obj <- list(eval_perf = eval_perf, opts = opts)
+    return(obj)
 }

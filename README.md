@@ -19,6 +19,7 @@ The code is structured as follows
 
 * __analysis__ folder: Contains Rmd files for generating the final figures for synthetic and real data analysis. It also contains the `model/melissa_model.Rmd` file, which gives an extensive explanation of the model including mathematical derivations.
 * __clustering-imputation__ folder: Contains all required scripts for performing clustering and imputation on real and synthetic data.
+* __data__ folder: Contains annotation data and bulk profiles of the ENCODE data used for the simulation study.
 * __lib__ folder: Contains the `Melissa` model implementation both in VB and Gibbs, also includes helper and plotting functions.
 * __model-efficiency__ folder: Contains scripts for measuring model efficiency between VB and Gibbs implementations.
 * __model-selection__ folder: Contains scripts for performing Bayesian model selection.
