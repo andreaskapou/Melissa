@@ -72,9 +72,12 @@ melissa_vb <- function(X, K = 3, basis = NULL, delta_0 = rep(1,K), w = NULL,
                        alpha_0 = .5, beta_0 = 10, vb_max_iter = 100,
                        epsilon_conv = 1e-5, is_kmeans = TRUE,
                        vb_init_nstart = 10, vb_init_max_iter = 20,
-                       is_parallel = TRUE, no_cores = NULL, is_verbose = TRUE){
+                       is_parallel = TRUE, no_cores = 2, is_verbose = TRUE){
     assertthat::assert_that(is.list(X))  # Check that X is a list object...
     assertthat::assert_that(is.list(X[[1]]))  # and its element is a list object
+    # Create RBF basis object by default
+    if (is.null(basis)) { basis <- create_rbf_object(M = 3) }
+
     N <- length(X)         # Total number of cells
     M <- length(X[[1]])    # Total number of genomic regions
     D <- basis$M + 1       # Number of basis functions
@@ -82,8 +85,6 @@ melissa_vb <- function(X, K = 3, basis = NULL, delta_0 = rep(1,K), w = NULL,
     no_cores <- BPRMeth:::.parallel_cores(no_cores = no_cores,
                                           is_parallel = is_parallel,
                                           max_cores = N)
-    # Create RBF basis object by default
-    if (is.null(basis)) { basis <- create_rbf_object(M = 3) }
     # List of genes with no coverage for each cell
     region_ind <- lapply(X = 1:N, FUN = function(n) which(!is.na(X[[n]])))
     # List of cells with no coverage for each genomic region
@@ -214,7 +215,7 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
     # Mean for each cluster
     m_k <- w
     # Covariance of each cluster
-    S_k <- lapply(X = 1:M, function(m) lapply(X = 1:K, FUN = function(k) solve(diag(2, D))))
+    S_k <- lapply(X = 1:K, function(k) lapply(X = 1:M, FUN = function(m) solve(diag(2, D))))
     # Scale of precision matrix
     beta_k   <- rep(beta_0, K)
     # Dirichlet parameter
@@ -222,7 +223,7 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
     # Expectation of log Dirichlet
     e_log_pi <- digamma(delta_k) - digamma(sum(delta_k))
     mk_Sk    <- lapply(X = 1:M, FUN = function(m) lapply(X = 1:K,
-                    FUN = function(k) tcrossprod(m_k[m,,k]) + S_k[[m]][[k]]))
+                    FUN = function(k) tcrossprod(m_k[m,,k]) + S_k[[k]][[m]]))
     # Update \mu
     mu <- vector(mode = "list", length = N)
     for (n in 1:N) {
@@ -277,13 +278,13 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
                 tmp_H  <- lapply(H, "[[", m)
                 tmp_Ez <- lapply(E_z, "[[", m)
                 # Update covariance for Gaussian
-                S_k[[m]][[k]] <- solve(diag(alpha_k[k]/beta_k[k], D) +
+                S_k[[k]][[m]] <- solve(diag(alpha_k[k]/beta_k[k], D) +
                     BPRMeth:::.add_func(lapply(X = cell_ind[[m]], FUN = function(n) tmp_HH[[n]]*r_nk[n,k])))
                 # Update mean for Gaussian
-                m_k[m,,k] <- S_k[[m]][[k]] %*% BPRMeth:::.add_func(lapply(X = cell_ind[[m]],
+                m_k[m,,k] <- S_k[[k]][[m]] %*% BPRMeth:::.add_func(lapply(X = cell_ind[[m]],
                     FUN = function(n) t(tmp_H[[n]]) %*% tmp_Ez[[n]]*r_nk[n,k]))
                 # Compute E[w^Tw]
-                E_ww[k] <- E_ww[k] + crossprod(m_k[m,,k]) + matrixcalc::matrix.trace(S_k[[m]][[k]])
+                E_ww[k] <- E_ww[k] + crossprod(m_k[m,,k]) + matrixcalc::matrix.trace(S_k[[k]][[m]])
             }
             # Update \beta_k parameter for Gamma
             beta_k[k]  <- beta_0 + 0.5*E_ww[k]
@@ -351,7 +352,7 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
         # Variational lower bound
         ##-------------------------------
         mk_Sk <- lapply(X = 1:M, FUN = function(m) lapply(X = 1:K,
-                FUN = function(k) tcrossprod(m_k[m, , k]) + S_k[[m]][[k]]))
+                FUN = function(k) tcrossprod(m_k[m, , k]) + S_k[[k]][[m]]))
         if (is_parallel) {
             lb_pz_qz <- sum(unlist(parallel::mclapply(X = 1:N,
                 FUN = function(n) sum(sapply(X = region_ind[[n]],
@@ -379,7 +380,7 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
         lb_q_pi  <- sum((delta_k - 1)*e_log_pi) + lgamma(sum(delta_k)) -
             sum(lgamma(delta_k))
         lb_q_w   <- sum(sapply(X = 1:M, FUN = function(m) sum(-0.5*log(sapply(X = 1:K,
-            FUN = function(k) det(S_k[[m]][[k]]))) - 0.5*D*(1 + log(2*pi)))))
+            FUN = function(k) det(S_k[[k]][[m]]))) - 0.5*D*(1 + log(2*pi)))))
         lb_q_tau <- sum(-lgamma(alpha_k) + (alpha_k - 1)*digamma(alpha_k) +
                             log(beta_k) - alpha_k)
         # Sum all parts to compute lower bound
