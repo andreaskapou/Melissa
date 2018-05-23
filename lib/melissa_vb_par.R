@@ -385,117 +385,58 @@ melissa_vb_inner_par <- function(H, y, region_ind, cell_ind, K, basis, w, delta_
 
 
 
-        # ##-------------------------------
-        # # Variational lower bound
-        # ##-------------------------------
-        # # For efficiency we compute it every 10 iterations and surely on the maximum iteration threshold
-        # if (i %% 10 == 0 | i == vb_max_iter) {
-        #     mk_Sk <- lapply(X = 1:M, FUN = function(m) lapply(X = 1:K,
-        #             FUN = function(k) tcrossprod(m_k[m, , k]) + S_k[[k]][[m]]))
-        #     if (is_parallel) {
-        #         lb_pz_qz <- sum(unlist(parallel::mclapply(X = 1:N,
-        #             FUN = function(n) sum(sapply(X = region_ind[[n]],
-        #             FUN = function(m) 0.5*crossprod(mu[[n]][[m]]) +
-        #             sum(y[[n]][[m]] * log(1 - pnorm(-mu[[n]][[m]])) + (1 - y[[n]][[m]]) *
-        #             log(pnorm(-mu[[n]][[m]]))) - 0.5*sum(sapply(X = 1:K, FUN = function(k)
-        #             r_nk[n,k] * matrix.trace(HH[[n]][[m]] %*% mk_Sk[[m]][[k]]) )))),
-        #             mc.cores = no_cores)))
-        #     }else {
-        #         lb_pz_qz <- sum(sapply(X = 1:N, FUN = function(n)
-        #             sum(sapply(X = region_ind[[n]],
-        #             FUN = function(m) 0.5*crossprod(mu[[n]][[m]]) +
-        #             sum(y[[n]][[m]] * log(1 - pnorm(-mu[[n]][[m]])) + (1 - y[[n]][[m]]) *
-        #             log(pnorm(-mu[[n]][[m]]))) - 0.5*sum(sapply(X = 1:K, FUN = function(k)
-        #             r_nk[n,k] * matrix.trace(HH[[n]][[m]] %*% mk_Sk[[m]][[k]]) )) ))))
-        #     }
-        #     lb_p_w   <- sum(-0.5*M*D*log(2*pi) + 0.5*M*D*(digamma(alpha_k) -
-        #         log(beta_k)) - 0.5*E_alpha*E_ww)
-        #     lb_p_c   <- sum(r_nk %*% e_log_pi)
-        #     lb_p_pi  <- sum((delta_0 - 1)*e_log_pi) + lgamma(sum(delta_0)) -
-        #         sum(lgamma(delta_0))
-        #     lb_p_tau <- sum(alpha_0*log(beta_0) + (alpha_0 - 1)*(digamma(alpha_k) -
-        #         log(beta_k)) - beta_0*E_alpha - lgamma(alpha_0))
-        #     lb_q_c   <- sum(r_nk*log_r_nk)
-        #     lb_q_pi  <- sum((delta_k - 1)*e_log_pi) + lgamma(sum(delta_k)) -
-        #         sum(lgamma(delta_k))
-        #     lb_q_w   <- sum(sapply(X = 1:M, FUN = function(m) sum(-0.5*log(sapply(X = 1:K,
-        #         FUN = function(k) det(S_k[[k]][[m]]))) - 0.5*D*(1 + log(2*pi)))))
-        #     lb_q_tau <- sum(-lgamma(alpha_k) + (alpha_k - 1)*digamma(alpha_k) +
-        #                         log(beta_k) - alpha_k)
-        #     # Sum all parts to compute lower bound
-        #     LB <- c(LB, lb_pz_qz + lb_p_c + lb_p_pi + lb_p_w + lb_p_tau - lb_q_c -
-        #                lb_q_pi - lb_q_w - lb_q_tau)
-        #     iter <- length(LB)
-        #     # Check if lower bound decreases
-        #     if (LB[iter] < LB[iter - 1]) { warning("Warning: Lower bound decreases!\n") }
-        #     # Check for convergence
-        #     if (abs(LB[iter] - LB[iter - 1]) < epsilon_conv) { break }
-        #     # Show VB difference
-        #     if (is_verbose) {
-        #         if (i %% 50 == 0) {
-        #             cat("\r","It:\t",i,"\tLB:\t",LB[iter],"\tDiff:\t",LB[iter] - LB[iter - 1],"\n")
-        #         }
-        #     }
-        # }
-        # # Check if VB converged in the given maximum iterations
-        # if (i == vb_max_iter) {warning("VB did not converge!\n")}
-        # if (is_verbose) { utils::setTxtProgressBar(pb, i) }
-
-
-
-
         ##-------------------------------
         # Variational lower bound
         ##-------------------------------
-        mk_Sk <- lapply(X = 1:M, FUN = function(m) lapply(X = 1:K,
-                                                          FUN = function(k) tcrossprod(m_k[m, , k]) + S_k[[k]][[m]]))
-        if (is_parallel) {
-            lb_pz_qz <- sum(unlist(parallel::mclapply(X = 1:N,
-                                                      FUN = function(n) sum(sapply(X = region_ind[[n]],
-                                                                                   FUN = function(m) 0.5*crossprod(mu[[n]][[m]]) +
-                                                                                       sum(y[[n]][[m]] * log(1 - pnorm(-mu[[n]][[m]])) + (1 - y[[n]][[m]]) *
-                                                                                               log(pnorm(-mu[[n]][[m]]))) - 0.5*sum(sapply(X = 1:K, FUN = function(k)
-                                                                                                   r_nk[n,k] * matrix.trace(HH[[n]][[m]] %*% mk_Sk[[m]][[k]]) )))),
-                                                      mc.cores = no_cores)))
-        }else {
-            lb_pz_qz <- sum(sapply(X = 1:N, FUN = function(n)
-                sum(sapply(X = region_ind[[n]],
-                           FUN = function(m) 0.5*crossprod(mu[[n]][[m]]) +
-                               sum(y[[n]][[m]] * log(1 - pnorm(-mu[[n]][[m]])) + (1 - y[[n]][[m]]) *
-                                       log(pnorm(-mu[[n]][[m]]))) - 0.5*sum(sapply(X = 1:K, FUN = function(k)
-                                           r_nk[n,k] * matrix.trace(HH[[n]][[m]] %*% mk_Sk[[m]][[k]]) )) ))))
-        }
-        lb_p_w   <- sum(-0.5*M*D*log(2*pi) + 0.5*M*D*(digamma(alpha_k) -
-                                                          log(beta_k)) - 0.5*E_alpha*E_ww)
-        lb_p_c   <- sum(r_nk %*% e_log_pi)
-        lb_p_pi  <- sum((delta_0 - 1)*e_log_pi) + lgamma(sum(delta_0)) -
-            sum(lgamma(delta_0))
-        lb_p_tau <- sum(alpha_0*log(beta_0) + (alpha_0 - 1)*(digamma(alpha_k) -
-                                                                 log(beta_k)) - beta_0*E_alpha - lgamma(alpha_0))
-        lb_q_c   <- sum(r_nk*log_r_nk)
-        lb_q_pi  <- sum((delta_k - 1)*e_log_pi) + lgamma(sum(delta_k)) -
-            sum(lgamma(delta_k))
-        lb_q_w   <- sum(sapply(X = 1:M, FUN = function(m) sum(-0.5*log(sapply(X = 1:K,
-                                                                              FUN = function(k) det(S_k[[k]][[m]]))) - 0.5*D*(1 + log(2*pi)))))
-        lb_q_tau <- sum(-lgamma(alpha_k) + (alpha_k - 1)*digamma(alpha_k) +
-                            log(beta_k) - alpha_k)
-        # Sum all parts to compute lower bound
-        LB <- c(LB, lb_pz_qz + lb_p_c + lb_p_pi + lb_p_w + lb_p_tau - lb_q_c -
-                    lb_q_pi - lb_q_w - lb_q_tau)
-
-        # Show VB difference
-        if (is_verbose) {
-            if (i %% 50 == 0) {
-                cat("\r", "It:\t",i,"\tLB:\t",LB[i],"\tDiff:\t",LB[i] - LB[i - 1],"\n")
-                cat("Z: ",lb_pz_qz,"\tC: ",lb_p_c - lb_q_c,
-                    "\tW: ", lb_p_w - lb_q_w,"\tPi: ", lb_p_pi - lb_q_pi,
-                    "\tTau: ",lb_p_tau - lb_q_tau,"\n")
+        # For efficiency we compute it every 10 iterations and surely on the maximum iteration threshold
+        if (i %% 10 == 0 | i == vb_max_iter) {
+            mk_Sk <- lapply(X = 1:M, FUN = function(m) lapply(X = 1:K,
+                    FUN = function(k) tcrossprod(m_k[m, , k]) + S_k[[k]][[m]]))
+            if (is_parallel) {
+                lb_pz_qz <- sum(unlist(parallel::mclapply(X = 1:N,
+                    FUN = function(n) sum(sapply(X = region_ind[[n]],
+                    FUN = function(m) 0.5*crossprod(mu[[n]][[m]]) +
+                    sum(y[[n]][[m]] * log(1 - pnorm(-mu[[n]][[m]])) + (1 - y[[n]][[m]]) *
+                    log(pnorm(-mu[[n]][[m]]))) - 0.5*sum(sapply(X = 1:K, FUN = function(k)
+                    r_nk[n,k] * matrix.trace(HH[[n]][[m]] %*% mk_Sk[[m]][[k]]) )))),
+                    mc.cores = no_cores)))
+            }else {
+                lb_pz_qz <- sum(sapply(X = 1:N, FUN = function(n)
+                    sum(sapply(X = region_ind[[n]],
+                    FUN = function(m) 0.5*crossprod(mu[[n]][[m]]) +
+                    sum(y[[n]][[m]] * log(1 - pnorm(-mu[[n]][[m]])) + (1 - y[[n]][[m]]) *
+                    log(pnorm(-mu[[n]][[m]]))) - 0.5*sum(sapply(X = 1:K, FUN = function(k)
+                    r_nk[n,k] * matrix.trace(HH[[n]][[m]] %*% mk_Sk[[m]][[k]]) )) ))))
+            }
+            lb_p_w   <- sum(-0.5*M*D*log(2*pi) + 0.5*M*D*(digamma(alpha_k) -
+                log(beta_k)) - 0.5*E_alpha*E_ww)
+            lb_p_c   <- sum(r_nk %*% e_log_pi)
+            lb_p_pi  <- sum((delta_0 - 1)*e_log_pi) + lgamma(sum(delta_0)) -
+                sum(lgamma(delta_0))
+            lb_p_tau <- sum(alpha_0*log(beta_0) + (alpha_0 - 1)*(digamma(alpha_k) -
+                log(beta_k)) - beta_0*E_alpha - lgamma(alpha_0))
+            lb_q_c   <- sum(r_nk*log_r_nk)
+            lb_q_pi  <- sum((delta_k - 1)*e_log_pi) + lgamma(sum(delta_k)) -
+                sum(lgamma(delta_k))
+            lb_q_w   <- sum(sapply(X = 1:M, FUN = function(m) sum(-0.5*log(sapply(X = 1:K,
+                FUN = function(k) det(S_k[[k]][[m]]))) - 0.5*D*(1 + log(2*pi)))))
+            lb_q_tau <- sum(-lgamma(alpha_k) + (alpha_k - 1)*digamma(alpha_k) +
+                                log(beta_k) - alpha_k)
+            # Sum all parts to compute lower bound
+            LB <- c(LB, lb_pz_qz + lb_p_c + lb_p_pi + lb_p_w + lb_p_tau - lb_q_c -
+                       lb_q_pi - lb_q_w - lb_q_tau)
+            iter <- length(LB)
+            # Check if lower bound decreases
+            if (LB[iter] < LB[iter - 1]) { warning("Warning: Lower bound decreases!\n") }
+            # Check for convergence
+            if (abs(LB[iter] - LB[iter - 1]) < epsilon_conv) { break }
+            # Show VB difference
+            if (is_verbose) {
+                if (i %% 50 == 0) {
+                    cat("\r","It:\t",i,"\tLB:\t",LB[iter],"\tDiff:\t",LB[iter] - LB[iter - 1],"\n")
+                }
             }
         }
-        # Check if lower bound decreases
-        if (LB[i] < LB[i - 1]) { warning("Warning: Lower bound decreases!\n") }
-        # Check for convergence
-        if (abs(LB[i] - LB[i - 1]) < epsilon_conv) { break }
         # Check if VB converged in the given maximum iterations
         if (i == vb_max_iter) {warning("VB did not converge!\n")}
         if (is_verbose) { utils::setTxtProgressBar(pb, i) }
