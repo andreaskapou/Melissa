@@ -75,9 +75,9 @@ opts                   <- obj$opts       # Get options
 opts$delta_0           <- rep(3, opts$K) # Dirichlet prior
 opts$alpha_0           <- 0.5            # Gamma prior
 opts$beta_0            <- 10             # Gamma prior
-opts$data_train_prcg   <- 0.3            # % of data to keep fully for training
+opts$data_train_prcg   <- 0.1            # % of data to keep fully for training
 opts$region_train_prcg <- 1              # % of regions kept for training
-opts$cpg_train_prcg    <- 0.5            # % of CpGs kept for training in each region
+opts$cpg_train_prcg    <- 0.8            # % of CpGs kept for training in each region
 opts$is_kmeans         <- TRUE           # Use K-means for initialization
 opts$vb_max_iter       <- 300            # Maximum VB iterations
 opts$epsilon_conv      <- 1e-4           # Convergence threshold for VB
@@ -102,4 +102,4 @@ saveRDS(obj, file = paste0(io$out_dir, "encode_melissa_K", opts$K,
                            "_rbf", opts$basis_prof$M,
                            "_dataTrain", opts$data_train_prcg,
                            "_regionTrain", opts$region_train_prcg,
-                           "_cpgPrcg", opts$cpg_train_prcg, ".rds") )
+                           "_cpgTrain", opts$cpg_train_prcg, ".rds") )

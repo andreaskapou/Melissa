@@ -72,7 +72,7 @@ melissa_vb <- function(X, K = 3, basis = NULL, delta_0 = rep(1,K), w = NULL,
                        alpha_0 = .5, beta_0 = 10, vb_max_iter = 100,
                        epsilon_conv = 1e-5, is_kmeans = TRUE,
                        vb_init_nstart = 10, vb_init_max_iter = 20,
-                       is_parallel = TRUE, no_cores = 2, is_verbose = TRUE){
+                       is_parallel = TRUE, no_cores = 3, is_verbose = TRUE){
     assertthat::assert_that(is.list(X))  # Check that X is a list object...
     assertthat::assert_that(is.list(X[[1]]))  # and its element is a list object
     # Create RBF basis object by default
@@ -253,11 +253,21 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
         ##-------------------------------
         # Variational E-Step
         ##-------------------------------
-        for (k in 1:K) {
-            log_rho_nk[,k] <- e_log_pi[k] + sapply(X = 1:N, function(n)
-                sum(sapply(X = region_ind[[n]], function(m)
-                -0.5*crossprod(E_zz[[n]][[m]]) + m_k[m,,k] %*% t(H[[n]][[m]]) %*%
-                E_z[[n]][[m]] - 0.5*matrix.trace(HH[[n]][[m]] %*% mk_Sk[[m]][[k]]))))
+        if (is_parallel) {
+            for (k in 1:K) {
+                log_rho_nk[,k] <- e_log_pi[k] + unlist(parallel::mclapply(X = 1:N, function(n)
+                    sum(sapply(X = region_ind[[n]], function(m)
+                    -0.5*crossprod(E_zz[[n]][[m]]) + m_k[m,,k] %*% t(H[[n]][[m]]) %*%
+                    E_z[[n]][[m]] - 0.5*matrix.trace(HH[[n]][[m]] %*% mk_Sk[[m]][[k]]))),
+                    mc.cores = no_cores))
+            }
+        }else {
+            for (k in 1:K) {
+                log_rho_nk[,k] <- e_log_pi[k] + sapply(X = 1:N, function(n)
+                    sum(sapply(X = region_ind[[n]], function(m)
+                    -0.5*crossprod(E_zz[[n]][[m]]) + m_k[m,,k] %*% t(H[[n]][[m]]) %*%
+                    E_z[[n]][[m]] - 0.5*matrix.trace(HH[[n]][[m]] %*% mk_Sk[[m]][[k]]))))
+            }
         }
         # Calculate responsibilities using logSumExp for numerical stability
         log_r_nk <- log_rho_nk - apply(log_rho_nk, 1, log_sum_exp)
@@ -270,77 +280,110 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
         delta_k <- delta_0 + colSums(r_nk)
         # TODO: Compute expected value of mixing proportions
         pi_k <- (delta_0 + colSums(r_nk)) / (K * delta_0 + N)
+
+        # Iterate over each cluster
         for (k in 1:K) {
-            E_ww[k] <- 0
-            for (m in 1:M) {
-                # Extract temporary objects
-                tmp_HH <- lapply(HH, "[[", m)
-                tmp_H  <- lapply(H, "[[", m)
-                tmp_Ez <- lapply(E_z, "[[", m)
-                # Update covariance for Gaussian
-                S_k[[k]][[m]] <- solve(diag(alpha_k[k]/beta_k[k], D) +
-                    BPRMeth:::.add_func(lapply(X = cell_ind[[m]], FUN = function(n) tmp_HH[[n]]*r_nk[n,k])))
-                # Update mean for Gaussian
-                m_k[m,,k] <- S_k[[k]][[m]] %*% BPRMeth:::.add_func(lapply(X = cell_ind[[m]],
-                    FUN = function(n) t(tmp_H[[n]]) %*% tmp_Ez[[n]]*r_nk[n,k]))
-                # Compute E[w^Tw]
-                E_ww[k] <- E_ww[k] + crossprod(m_k[m,,k]) + matrixcalc::matrix.trace(S_k[[k]][[m]])
+            if (is_parallel) {
+                tmp <- parallel::mclapply(X = 1:M, function(m) {
+                    # Extract temporary objects
+                    tmp_HH <- lapply(HH, "[[", m)
+                    tmp_H  <- lapply(H, "[[", m)
+                    tmp_Ez <- lapply(E_z, "[[", m)
+                    # Update covariance for Gaussian
+                    S_k <- solve(diag(alpha_k[k]/beta_k[k], D) +
+                        BPRMeth:::.add_func(lapply(X = cell_ind[[m]], FUN = function(n) tmp_HH[[n]]*r_nk[n,k])))
+                    # Update mean for Gaussian
+                    m_k <- S_k %*% BPRMeth:::.add_func(lapply(X = cell_ind[[m]],
+                        FUN = function(n) t(tmp_H[[n]]) %*% tmp_Ez[[n]]*r_nk[n,k]))
+                    # Compute E[w^Tw]
+                    E_ww <- crossprod(m_k) + matrixcalc::matrix.trace(S_k)
+                    return(list(S_k = S_k, m_k = m_k, E_ww = E_ww))
+                }, mc.cores = no_cores)
+            } else{
+                tmp <- lapply(X = 1:M, function(m) {
+                    # Extract temporary objects
+                    tmp_HH <- lapply(HH, "[[", m)
+                    tmp_H  <- lapply(H, "[[", m)
+                    tmp_Ez <- lapply(E_z, "[[", m)
+                    # Update covariance for Gaussian
+                    S_k <- solve(diag(alpha_k[k]/beta_k[k], D) +
+                        BPRMeth:::.add_func(lapply(X = cell_ind[[m]], FUN = function(n) tmp_HH[[n]]*r_nk[n,k])))
+                    # Update mean for Gaussian
+                    m_k <- S_k %*% BPRMeth:::.add_func(lapply(X = cell_ind[[m]],
+                        FUN = function(n) t(tmp_H[[n]]) %*% tmp_Ez[[n]]*r_nk[n,k]))
+                    # Compute E[w^Tw]
+                    E_ww <- crossprod(m_k) + matrixcalc::matrix.trace(S_k)
+                    return(list(S_k = S_k, m_k = m_k, E_ww = E_ww))
+                })
             }
+            # Update covariance
+            S_k[[k]] <- lapply(tmp, "[[", "S_k")
+            # Update mean
+            m_k[,,k] <- t(sapply(tmp, "[[", "m_k"))
+            # Update E[w^Tw]
+            E_ww[k] <- sum(sapply(tmp, "[[", "E_ww"))
             # Update \beta_k parameter for Gamma
             beta_k[k]  <- beta_0 + 0.5*E_ww[k]
             # Check beta parameter for numerical issues
             if (beta_k[k] > 10*alpha_k[k]) { beta_k[k] <- 10*alpha_k[k] }
         }
 
+        # If parallel mode
         if (is_parallel) {
-            # Update \mu
-            if (D == 1) {
-                mu <- parallel::mclapply(X = 1:N, FUN = function(n){
-                    l <- mu[[n]]; l[region_ind[[n]]] <- lapply(X = region_ind[[n]],
-                    FUN = function(m) c(H[[n]][[m]] %*% sum(sapply(X = 1:K,
-                    FUN = function(k) r_nk[n,k]*m_k[m,,k])))); return(l) },
-                    mc.cores = no_cores)
-            }else {
-                mu <- parallel::mclapply(X = 1:N, FUN = function(n){
-                    l <- mu[[n]]; l[region_ind[[n]]] <- lapply(X = region_ind[[n]],
-                    FUN = function(m) c(H[[n]][[m]] %*% rowSums(sapply(X = 1:K,
-                    FUN = function(k) r_nk[n,k]*m_k[m,,k])))); return(l)},
-                    mc.cores = no_cores)
-            }
-            # Update E[z] and E[z^2]
-            E_z <- parallel::mclapply(X = 1:N, function(n){
-                l <- E_z[[n]]; l[region_ind[[n]]] <- lapply(X = region_ind[[n]],
-                FUN = function(m) .update_Ez(E_z = E_z[[n]][[m]], mu = mu[[n]][[m]],
-                y_0 = y_0[[n]][[m]], y_1 = y_1[[n]][[m]])); return(l)},
-                mc.cores = no_cores)
-            E_zz <- parallel::mclapply(X = 1:N, FUN = function(n){
-                l <- E_zz[[n]]; l[region_ind[[n]]] <- lapply(X = region_ind[[n]],
-                FUN = function(m) 1 + mu[[n]][[m]] * E_z[[n]][[m]]); return(l)},
-                mc.cores = no_cores)
-        }else {
-            # Update \mu
-            if (D == 1) {
-                mu <- lapply(X = 1:N, FUN = function(n) { l <- mu[[n]];
-                    l[region_ind[[n]]] <- lapply(X = region_ind[[n]],
-                    FUN = function(m) c(H[[n]][[m]] %*% sum(sapply(X = 1:K,
-                    FUN = function(k) r_nk[n,k]*m_k[m,,k])))); return(l)})
-            }else {
-                mu <- lapply(X = 1:N, FUN = function(n) {l <- mu[[n]]
-                    l[region_ind[[n]]] <- lapply(X = region_ind[[n]],
-                    FUN = function(m) c(H[[n]][[m]] %*% rowSums(sapply(X = 1:K,
-                    FUN = function(k) r_nk[n,k]*m_k[m,,k])))); return(l)})
-            }
-            # Update E[z] and E[z^2]
-            E_z <- lapply(X = 1:N, function(n) { l <- E_z[[n]];
-                    l[region_ind[[n]]] <- lapply(X = region_ind[[n]],
-                    FUN = function(m) .update_Ez(E_z = E_z[[n]][[m]],
-                    mu = mu[[n]][[m]], y_0 = y_0[[n]][[m]], y_1 = y_1[[n]][[m]]));
-                    return(l)})
-            E_zz <- lapply(X = 1:N, FUN = function(n) { l <- E_zz[[n]];
-                    l[region_ind[[n]]] <- lapply(X = region_ind[[n]],
-                    FUN = function(m) 1 + mu[[n]][[m]] * E_z[[n]][[m]]);
-                    return(l)})
+            # Iterate over cells
+            tmp <- parallel::mclapply(X = 1:N, FUN = function(n) {
+                # Update \mu
+                tmp_mu <- mu[[n]]
+                tmp_mu[region_ind[[n]]] <- lapply(X = region_ind[[n]], FUN = function(m)
+                    c(H[[n]][[m]] %*% rowSums(matrix(sapply(X = 1:K, FUN = function(k) r_nk[n,k]*m_k[m,,k]), ncol = K))))
+                # Update E[z]
+                tmp_E_z <- E_z[[n]]
+                tmp_E_z[region_ind[[n]]] <- lapply(X = region_ind[[n]], FUN = function(m)
+                    .update_Ez(E_z = E_z[[n]][[m]], mu = tmp_mu[[m]], y_0 = y_0[[n]][[m]], y_1 = y_1[[n]][[m]]))
+                # Update E[z^2]
+                tmp_E_zz <- E_zz[[n]]
+                tmp_E_zz[region_ind[[n]]] <- lapply(X = region_ind[[n]], FUN = function(m) 1 + tmp_mu[[m]] * tmp_E_z[[m]])
+                # Return list with results
+                return(list(tmp_mu = tmp_mu, tmp_E_z = tmp_E_z, tmp_E_zz = tmp_E_zz))
+
+                # tmp_inner <- lapply(X = region_ind[[n]], FUN = function(m) {
+                #     # Update \mu
+                #     tmp_mu <- c(H[[n]][[m]] %*% rowSums(matrix(sapply(X = 1:K, FUN = function(k) r_nk[n,k]*m_k[m,,k]), ncol = K)))
+                #     # Update E[z]
+                #     tmp_E_z <- .update_Ez(E_z = E_z[[n]][[m]], mu = tmp_mu, y_0 = y_0[[n]][[m]], y_1 = y_1[[n]][[m]])
+                #     # Update E[z^2]
+                #     tmp_E_zz <- 1 + tmp_mu * tmp_E_z
+                #     # Return list with results
+                #     return(list(tmp_mu = tmp_mu, tmp_E_z = tmp_E_z, tmp_E_zz = tmp_E_zz))
+                # })
+                # # Concatenate results per cell
+                # tmp_mu <- mu[[n]]; tmp_mu[region_ind[[n]]] <- lapply(tmp_inner, "[[", "tmp_mu")
+                # tmp_E_z <- E_z[[n]]; tmp_E_z[region_ind[[n]]] <- lapply(tmp_inner, "[[", "tmp_E_z")
+                # tmp_E_zz <- E_zz[[n]]; tmp_E_zz[region_ind[[n]]] <- lapply(tmp_inner, "[[", "tmp_E_zz")
+            }, mc.cores = no_cores)
+        } else {
+            # Iterate over cells
+            tmp <- lapply(X = 1:N, FUN = function(n) {
+                # Update \mu
+                tmp_mu <- mu[[n]]
+                tmp_mu[region_ind[[n]]] <- lapply(X = region_ind[[n]], FUN = function(m)
+                    c(H[[n]][[m]] %*% rowSums(matrix(sapply(X = 1:K, FUN = function(k) r_nk[n,k]*m_k[m,,k]), ncol = K))))
+                # Update E[z]
+                tmp_E_z <- E_z[[n]]
+                tmp_E_z[region_ind[[n]]] <- lapply(X = region_ind[[n]], FUN = function(m)
+                    .update_Ez(E_z = E_z[[n]][[m]], mu = tmp_mu[[m]], y_0 = y_0[[n]][[m]], y_1 = y_1[[n]][[m]]))
+                # Update E[z^2]
+                tmp_E_zz <- E_zz[[n]]
+                tmp_E_zz[region_ind[[n]]] <- lapply(X = region_ind[[n]], FUN = function(m) 1 + tmp_mu[[m]] * tmp_E_z[[m]])
+                # Return list with results
+                return(list(tmp_mu = tmp_mu, tmp_E_z = tmp_E_z, tmp_E_zz = tmp_E_zz))
+            })
         }
+        # Concatenate final results in correct format
+        mu <- lapply(tmp, "[[", "tmp_mu")
+        E_z <- lapply(tmp, "[[", "tmp_E_z")
+        E_zz <- lapply(tmp, "[[", "tmp_E_zz")
+        rm(tmp)
         # Update expectations over \ln\pi
         e_log_pi  <- digamma(delta_k) - digamma(sum(delta_k))
         # Compute expectation of E[a]
@@ -351,55 +394,55 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
         ##-------------------------------
         # Variational lower bound
         ##-------------------------------
-        mk_Sk <- lapply(X = 1:M, FUN = function(m) lapply(X = 1:K,
-                FUN = function(k) tcrossprod(m_k[m, , k]) + S_k[[k]][[m]]))
-        if (is_parallel) {
-            lb_pz_qz <- sum(unlist(parallel::mclapply(X = 1:N,
-                FUN = function(n) sum(sapply(X = region_ind[[n]],
-                FUN = function(m) 0.5*crossprod(mu[[n]][[m]]) +
-                sum(y[[n]][[m]] * log(1 - pnorm(-mu[[n]][[m]])) + (1 - y[[n]][[m]]) *
-                log(pnorm(-mu[[n]][[m]]))) - 0.5*sum(sapply(X = 1:K, FUN = function(k)
-                r_nk[n,k] * matrix.trace(HH[[n]][[m]] %*% mk_Sk[[m]][[k]]) )))),
-                mc.cores = no_cores)))
-        }else {
-            lb_pz_qz <- sum(sapply(X = 1:N, FUN = function(n)
-                sum(sapply(X = region_ind[[n]],
-                FUN = function(m) 0.5*crossprod(mu[[n]][[m]]) +
-                sum(y[[n]][[m]] * log(1 - pnorm(-mu[[n]][[m]])) + (1 - y[[n]][[m]]) *
-                log(pnorm(-mu[[n]][[m]]))) - 0.5*sum(sapply(X = 1:K, FUN = function(k)
-                r_nk[n,k] * matrix.trace(HH[[n]][[m]] %*% mk_Sk[[m]][[k]]) )) ))))
-        }
-        lb_p_w   <- sum(-0.5*M*D*log(2*pi) + 0.5*M*D*(digamma(alpha_k) -
-            log(beta_k)) - 0.5*E_alpha*E_ww)
-        lb_p_c   <- sum(r_nk %*% e_log_pi)
-        lb_p_pi  <- sum((delta_0 - 1)*e_log_pi) + lgamma(sum(delta_0)) -
-            sum(lgamma(delta_0))
-        lb_p_tau <- sum(alpha_0*log(beta_0) + (alpha_0 - 1)*(digamma(alpha_k) -
-            log(beta_k)) - beta_0*E_alpha - lgamma(alpha_0))
-        lb_q_c   <- sum(r_nk*log_r_nk)
-        lb_q_pi  <- sum((delta_k - 1)*e_log_pi) + lgamma(sum(delta_k)) -
-            sum(lgamma(delta_k))
-        lb_q_w   <- sum(sapply(X = 1:M, FUN = function(m) sum(-0.5*log(sapply(X = 1:K,
-            FUN = function(k) det(S_k[[k]][[m]]))) - 0.5*D*(1 + log(2*pi)))))
-        lb_q_tau <- sum(-lgamma(alpha_k) + (alpha_k - 1)*digamma(alpha_k) +
-                            log(beta_k) - alpha_k)
-        # Sum all parts to compute lower bound
-        LB <- c(LB, lb_pz_qz + lb_p_c + lb_p_pi + lb_p_w + lb_p_tau - lb_q_c -
-                   lb_q_pi - lb_q_w - lb_q_tau)
-
-        # Show VB difference
-        if (is_verbose) {
-            if (i %% 50 == 0) {
-                cat("\r", "It:\t",i,"\tLB:\t",LB[i],"\tDiff:\t",LB[i] - LB[i - 1],"\n")
-                cat("Z: ",lb_pz_qz,"\tC: ",lb_p_c - lb_q_c,
-                    "\tW: ", lb_p_w - lb_q_w,"\tPi: ", lb_p_pi - lb_q_pi,
-                    "\tTau: ",lb_p_tau - lb_q_tau,"\n")
+        # For efficiency we compute it every 10 iterations and surely on the maximum iteration threshold
+        if (i %% 10 == 0 | i == vb_max_iter) {
+            mk_Sk <- lapply(X = 1:M, FUN = function(m) lapply(X = 1:K,
+                    FUN = function(k) tcrossprod(m_k[m, , k]) + S_k[[k]][[m]]))
+            if (is_parallel) {
+                lb_pz_qz <- sum(unlist(parallel::mclapply(X = 1:N,
+                    FUN = function(n) sum(sapply(X = region_ind[[n]],
+                    FUN = function(m) 0.5*crossprod(mu[[n]][[m]]) +
+                    sum(y[[n]][[m]] * log(1 - pnorm(-mu[[n]][[m]])) + (1 - y[[n]][[m]]) *
+                    log(pnorm(-mu[[n]][[m]]))) - 0.5*sum(sapply(X = 1:K, FUN = function(k)
+                    r_nk[n,k] * matrix.trace(HH[[n]][[m]] %*% mk_Sk[[m]][[k]]) )))),
+                    mc.cores = no_cores)))
+            }else {
+                lb_pz_qz <- sum(sapply(X = 1:N, FUN = function(n)
+                    sum(sapply(X = region_ind[[n]],
+                    FUN = function(m) 0.5*crossprod(mu[[n]][[m]]) +
+                    sum(y[[n]][[m]] * log(1 - pnorm(-mu[[n]][[m]])) + (1 - y[[n]][[m]]) *
+                    log(pnorm(-mu[[n]][[m]]))) - 0.5*sum(sapply(X = 1:K, FUN = function(k)
+                    r_nk[n,k] * matrix.trace(HH[[n]][[m]] %*% mk_Sk[[m]][[k]]) )) ))))
+            }
+            lb_p_w   <- sum(-0.5*M*D*log(2*pi) + 0.5*M*D*(digamma(alpha_k) -
+                log(beta_k)) - 0.5*E_alpha*E_ww)
+            lb_p_c   <- sum(r_nk %*% e_log_pi)
+            lb_p_pi  <- sum((delta_0 - 1)*e_log_pi) + lgamma(sum(delta_0)) -
+                sum(lgamma(delta_0))
+            lb_p_tau <- sum(alpha_0*log(beta_0) + (alpha_0 - 1)*(digamma(alpha_k) -
+                log(beta_k)) - beta_0*E_alpha - lgamma(alpha_0))
+            lb_q_c   <- sum(r_nk*log_r_nk)
+            lb_q_pi  <- sum((delta_k - 1)*e_log_pi) + lgamma(sum(delta_k)) -
+                sum(lgamma(delta_k))
+            lb_q_w   <- sum(sapply(X = 1:M, FUN = function(m) sum(-0.5*log(sapply(X = 1:K,
+                FUN = function(k) det(S_k[[k]][[m]]))) - 0.5*D*(1 + log(2*pi)))))
+            lb_q_tau <- sum(-lgamma(alpha_k) + (alpha_k - 1)*digamma(alpha_k) +
+                                log(beta_k) - alpha_k)
+            # Sum all parts to compute lower bound
+            LB <- c(LB, lb_pz_qz + lb_p_c + lb_p_pi + lb_p_w + lb_p_tau - lb_q_c -
+                       lb_q_pi - lb_q_w - lb_q_tau)
+            iter <- length(LB)
+            # Check if lower bound decreases
+            if (LB[iter] < LB[iter - 1]) { warning("Warning: Lower bound decreases!\n") }
+            # Check for convergence
+            if (abs(LB[iter] - LB[iter - 1]) < epsilon_conv) { break }
+            # Show VB difference
+            if (is_verbose) {
+                if (i %% 50 == 0) {
+                    cat("\r","It:\t",i,"\tLB:\t",LB[iter],"\tDiff:\t",LB[iter] - LB[iter - 1],"\n")
+                }
             }
         }
-        # Check if lower bound decreases
-        if (LB[i] < LB[i - 1]) { warning("Warning: Lower bound decreases!\n") }
-        # Check for convergence
-        if (abs(LB[i] - LB[i - 1]) < epsilon_conv) { break }
         # Check if VB converged in the given maximum iterations
         if (i == vb_max_iter) {warning("VB did not converge!\n")}
         if (is_verbose) { utils::setTxtProgressBar(pb, i) }

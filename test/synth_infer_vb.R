@@ -17,7 +17,7 @@ N <- 20                # Number of cells
 M <- 20                # Number of genomic regions
 cluster_var  <- 0.8    # % of cluster variability across regions
 is_kmeans    <- TRUE   # Use K-means for initialization
-is_parallel  <- FALSE   # Use parallelized version
+is_parallel  <- TRUE   # Use parallelized version
 no_cores     <- 2      # Number of cores
 vb_max_iter  <- 100    # Maximum VB iterations
 epsilon_conv <- 1e-4   # Convergence threshold for VB
