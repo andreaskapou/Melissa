@@ -95,7 +95,7 @@ io <- list(data_file = paste0("raw/data-sims/encode_data_1.rds"),
            out_dir = "../../local-data/melissa/synthetic/imputation/coverage/")
 obj <- readRDS(paste0(io$out_dir, io$data_file))
 opts                   <- obj$opts      # Get options
-opts$data_train_prcg   <- 0.3           # % of data to keep fully for training
+opts$data_train_prcg   <- 0.1           # % of data to keep fully for training
 opts$region_train_prcg <- 1             # % of regions kept for training
 opts$cpg_train_prcg    <- seq(.1,.9,.1) # % of CpGs kept for training
 opts$is_parallel       <- TRUE          # Use parallelized version

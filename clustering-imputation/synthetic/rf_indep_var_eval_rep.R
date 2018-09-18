@@ -92,9 +92,9 @@ io <- list(data_file = paste0("raw/data-sims/encode_data_0.1_1.rds"),
            out_dir = "../../local-data/melissa/synthetic/imputation/dissimilarity/")
 obj <- readRDS(paste0(io$out_dir, io$data_file))
 opts                   <- obj$opts # Get options
-opts$data_train_prcg   <- 0.3      # % of data to keep fully for training
+opts$data_train_prcg   <- 0.1      # % of data to keep fully for training
 opts$region_train_prcg <- 1        # % of regions kept for training
-opts$cpg_train_prcg    <- 0.5      # % of CpGs kept for training in each region
+opts$cpg_train_prcg    <- 0.8      # % of CpGs kept for training in each region
 opts$is_parallel       <- TRUE     # Use parallelized version
 opts$no_cores          <- 3        # Number of cores
 rm(obj)
@@ -114,4 +114,4 @@ saveRDS(obj, file = paste0(io$out_dir, "encode_rf_indep_K", opts$K,
                            "_rbf", opts$basis_prof$M,
                            "_dataTrain", opts$data_train_prcg,
                            "_regionTrain", opts$region_train_prcg,
-                           "_cpgPrcg", opts$cpg_train_prcg, ".rds") )
+                           "_cpgTrain", opts$cpg_train_prcg, ".rds") )
