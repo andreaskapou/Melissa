@@ -71,7 +71,7 @@ opts                   <- obj$opts       # Get options
 opts$delta_0           <- rep(3, opts$K) # Dirichlet prior
 opts$alpha_0           <- 0.5            # Gamma prior
 opts$beta_0            <- 10             # Gamma prior
-opts$data_train_prcg   <- 0.3            # % of data to keep fully for training
+opts$data_train_prcg   <- 0.1            # % of data to keep fully for training
 opts$region_train_prcg <- 1              # % of regions kept for training
 opts$cpg_train_prcg    <- seq(.1,.9,.1)  # % of CpGs kept for training in each region
 opts$is_kmeans         <- TRUE           # Use K-means for initialization
@@ -80,7 +80,7 @@ opts$epsilon_conv      <- 1e-4           # Convergence threshold for VB
 opts$vb_init_nstart    <- 3              # Mini VB restarts
 opts$vb_init_max_iter  <- 20             # Mini VB iteratiions
 opts$is_parallel       <- TRUE           # Use parallelized version
-opts$no_cores          <- 3              # Number of cores
+opts$no_cores          <- 10             # Number of cores
 rm(obj)
 
 # Parallel analysis
