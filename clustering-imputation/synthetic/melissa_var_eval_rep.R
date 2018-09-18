@@ -84,7 +84,7 @@ opts$epsilon_conv      <- 1e-4           # Convergence threshold for VB
 opts$vb_init_nstart    <- 3              # Mini VB restarts
 opts$vb_init_max_iter  <- 20             # Mini VB iteratiions
 opts$is_parallel       <- TRUE           # Use parallelized version
-opts$no_cores          <- 3              # Number of cores
+opts$no_cores          <- 10             # Number of cores
 rm(obj)
 
 # Parallel analysis
