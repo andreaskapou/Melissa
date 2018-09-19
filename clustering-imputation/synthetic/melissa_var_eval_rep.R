@@ -81,10 +81,10 @@ opts$cpg_train_prcg    <- 0.8            # % of CpGs kept for training in each r
 opts$is_kmeans         <- TRUE           # Use K-means for initialization
 opts$vb_max_iter       <- 300            # Maximum VB iterations
 opts$epsilon_conv      <- 1e-4           # Convergence threshold for VB
-opts$vb_init_nstart    <- 3              # Mini VB restarts
+opts$vb_init_nstart    <- 10             # Mini VB restarts
 opts$vb_init_max_iter  <- 20             # Mini VB iteratiions
 opts$is_parallel       <- TRUE           # Use parallelized version
-opts$no_cores          <- 4              # Number of cores
+opts$no_cores          <- 5              # Number of cores
 rm(obj)
 
 # Parallel analysis
