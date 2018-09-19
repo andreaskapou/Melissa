@@ -24,7 +24,7 @@ dt <- readRDS(paste0(io$data_dir, "met/filtered_met/", io$dataset, "/", io$data_
 # Initialize parameters
 ##------------------------------------
 opts                  <- dt$opts
-opts$K                <- 5           # Number of clusters
+opts$K                <- 6           # Number of clusters
 opts$N                <- length(dt$met) # Number of cells
 opts$M                <- length(dt$met[[1]]) # Number of genomic regions
 opts$delta_0          <- rep(.1, opts$K)   # Dirichlet prior
@@ -40,7 +40,7 @@ opts$epsilon_conv     <- 1e-4        # Convergence threshold for VB
 opts$vb_init_nstart   <- 5          # Mini VB restarts
 opts$vb_init_max_iter <- 10          # Mini VB iteratiions
 opts$is_parallel      <- TRUE        # Use parallelized version
-opts$no_cores         <- 10           # Number of cores
+opts$no_cores         <- 4           # Number of cores
 opts$basis_prof       <- create_rbf_object(M = 7) # Profile basis functions
 opts$basis_mean       <- create_rbf_object(M = 0) # Rate basis function
 

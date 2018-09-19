@@ -14,7 +14,7 @@ set.seed(123)
 ##------------------------------------
 # Load preprocessed data
 ##------------------------------------
-io <- list(dataset = "mt-seq", data_file = "active_enhancers", cov = 10, sd = 0.2)
+io <- list(dataset = "mt-seq", data_file = "prom5k", cov = 10, sd = 0.2)
 io$data_dir = "../../local-data/melissa/"
 io$out_dir = paste0(io$data_dir, io$dataset, "/imputation/")
 dt <- readRDS(paste0(io$data_dir, "met/filtered_met/", io$dataset, "/", io$data_file, "_cov",
@@ -40,7 +40,7 @@ opts$epsilon_conv     <- 1e-4        # Convergence threshold for VB
 opts$vb_init_nstart   <- 5          # Mini VB restarts
 opts$vb_init_max_iter <- 10          # Mini VB iteratiions
 opts$is_parallel      <- TRUE        # Use parallelized version
-opts$no_cores         <- 10           # Number of cores
+opts$no_cores         <- 7           # Number of cores
 opts$basis_prof       <- create_rbf_object(M = 7) # Profile basis functions
 opts$basis_mean       <- create_rbf_object(M = 0) # Rate basis function
 
