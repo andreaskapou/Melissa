@@ -33,7 +33,7 @@ Parameters
 * `cpg_train_prcg = seq(.1, .9, .1)` (% of CpGs kept for training in each region)
 
 ### Change cluster dissimilarity 
-We set a specific value for the `cpg_train_prcg = 0.4` and change the dissimilarity percentage to show the robustness of the model across different dissimilarity levels.
+We set a specific value for the `cpg_train_prcg = 0.4` (supplementary figure is `cpg_train_prcg = 0.8`) and change the dissimilarity percentage to show the robustness of the model across different dissimilarity levels.
 
 Function for generating synthetic data: `preprocessing/synthetic/encode_dissimilarity.R`
 
