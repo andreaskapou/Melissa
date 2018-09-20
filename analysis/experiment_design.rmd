@@ -45,8 +45,8 @@ Parameters
 * `cpg_train_prcg = 0.4`            (% of CpGs kept for training in each region)
 
 ### Compare with different models
-* BPRMeth profile
-* BPRMeth rate
+* BPRMeth
+* Rate
 * Melissa rate
 * Random Forests (RF)
 
@@ -71,7 +71,7 @@ Strict (shrinkage) prior
 
 
 ## VB efficiency
-Run VB model and Gibbs model on synthetic data (file `model-efficiency.R`) and show the efficiency of the VB model
+Run VB model and Gibbs model on synthetic data (file `model-efficiency.R`) and show the efficiency of the VB model.
 
 Parameters:
 
@@ -130,6 +130,22 @@ For imputation we use the following parameters settings
 * `cpg_train_prcg = 0.5` (% of CpGs to keep for training at each region/cell)
 * `total_sims = 10` (Total simulations)
 
+## VB efficiency
+Run VB model on MT-seq data (file `model-efficiency/mt-seq/model-efficiency.R`) and show the efficiency of the VB model for all contexts.
+
+Parameters: The same as the ones when running the model for clustering and imputation.
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+suppressPackageStartupMessages(library(kableExtra))
+suppressPackageStartupMessages(library(data.table))
+suppressPackageStartupMessages(library(purrr))
+dt <- data.table::data.table("Context" = c("Prom3k", "Prom5k", "Prom10k", "Active Enhancers", "Nanog", "Super Enhancers"), "CpGs (in millions)" = c("0.62", "2.1", "6", "0.7", "0.18", "0.5"),  "Time" = c("09:58 - 11:17", "10:38 - 13:36", "09:57 - 15:34", "09:52 - 11:38", "09:54 - 10:31", "09:53 - 10:54"), "Time elapsed (in hours)" = c("1.31", "2.9", "5.6", "1.76", "0.61", "1"))
+
+dt %>%
+  kable("html") %>%
+  kable_styling()
+```
+
 
 # Mouse ESCs dataset - Smallwood 2014
 
@@ -173,3 +189,20 @@ For imputation we use the following parameters settings
 * `region_train_prcg = 0.95` (% of samples to keep for training, i.e. some genes will have no coverage for a given cell.)
 * `cpg_train_prcg = 0.5` (% of CpGs to keep for training at each region/cell)
 * `total_sims = 10` (Total simulations)
+
+
+## VB efficiency
+Run VB model on MT-seq data (file `model-efficiency/mt-seq/model-efficiency.R`) and show the efficiency of the VB model for all contexts.
+
+Parameters: The same as the ones when running the model for clustering and imputation.
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+suppressPackageStartupMessages(library(kableExtra))
+suppressPackageStartupMessages(library(data.table))
+suppressPackageStartupMessages(library(purrr))
+dt <- data.table::data.table("Context" = c("Prom3k", "Prom5k", "Prom10k", "Active Enhancers", "Nanog", "Super Enhancers"), "CpGs (in millions)" = c("0.98", "1.54", "4.13", "0.85", "0.26", "0.29"), "Time" = c("09:58 - 11:17", "10:38 - 13:36", "11:19 - 15:24", "09:52 - 11:38", "08:35 - 09:30", "08:34 - 09:28"), "Time elapsed (in hours)" = c("1.31", "2.9", "4", "1.76", "0.91", "0.9"))
+
+dt %>%
+  kable("html") %>%
+  kable_styling()
+```

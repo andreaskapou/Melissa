@@ -232,6 +232,10 @@ auc_var_jitter <- copy(dt_var_analysis)
 auc_var_jitter <- auc_var_jitter %>% .[, c("cell_var", "auc_melissa", "auc_melissa_rate", "auc_indep_prof", "auc_indep_rate", "auc_rf") ] %>% setnames(c("cell_var", "auc_melissa", "auc_melissa_rate", "auc_indep_prof", "auc_indep_rate", "auc_rf"), c("x", "Melissa", "Melissa Rate", "BPRMeth", "Rate", "RF")) %>% .[, x := as.factor(x)] %>% melt(variable.name = "Model", value.name = "y") %>% .[, Model := factor(Model, levels = c("Melissa", "BPRMeth", "RF", "Melissa Rate", "Rate"))]
 p_auc_var_jitter <- auc_jitter_plot(auc_var_jitter, x_lab = "Cluster dissimilarity", y_lab = "AUC", title = "")
 print(p_auc_var_jitter)
+
+# pdf(file = paste0("out/synthetic/auc-synth-var08.pdf"), width = 11, height = 6, useDingbats = FALSE)
+# p_auc_var_jitter
+# dev.off()
 ```
 
 # F measure performance across cluster dissimilarity 
@@ -241,6 +245,10 @@ f_var_jitter <- copy(dt_var_analysis)
 f_var_jitter <- f_var_jitter %>% .[, c("cell_var", "f_melissa", "f_melissa_rate", "f_indep_prof", "f_indep_rate", "f_rf") ] %>% setnames(c("cell_var", "f_melissa", "f_melissa_rate", "f_indep_prof", "f_indep_rate", "f_rf"), c("x", "Melissa", "Melissa Rate", "BPRMeth", "Rate", "RF")) %>% .[, x := as.factor(x)] %>% melt(variable.name = "Model", value.name = "y") %>% .[, Model := factor(Model, levels = c("Melissa", "BPRMeth", "RF", "Melissa Rate", "Rate"))]
 p_f_var_jitter <- auc_jitter_plot(f_var_jitter, x_lab = "Cluster dissimilarity", y_lab = "F measure", title = "")
 print(p_f_var_jitter)
+
+# pdf(file = paste0("out/synthetic/f-synth-var08.pdf"), width = 11, height = 6, useDingbats = FALSE)
+# p_f_var_jitter
+# dev.off()
 ```
 
 # ARI performance CpG coverage
