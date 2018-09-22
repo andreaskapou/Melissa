@@ -33,7 +33,7 @@ opts$beta_0           <- 15          # Gamma prior
 opts$filt_region_cov  <- 0.5         # Filter low covered genomic regions
 opts$data_train_prcg  <- 0.4         # % of data to keep fully for training
 opts$region_train_prcg <- 0.95       # % of regions kept for training
-opts$cpg_train_prcg   <- 0.5         # % of CpGs kept for training in each region
+opts$cpg_train_prcg   <- 0.2         # % of CpGs kept for training in each region
 opts$is_kmeans        <- TRUE        # Use K-means for initialization
 opts$vb_max_iter      <- 500         # Maximum VB iterations
 opts$epsilon_conv     <- 1e-4        # Convergence threshold for VB
