@@ -21,6 +21,8 @@ Use the following parameter settings for measuring model performance on all para
 * `pi_k = (.2, .4, .15, .25)` (Mixing proportions)
 * `vb_max_iter = 300` (VB iterations)
 * `total_sims = 10` (Total simulations)
+* `gaussian_noise = 0.05` (Noise on the probability of success per CpG)
+* `gaussian_noise = 0.15` (For high noise experiments)
 
 ### Change CpG coverage
 Function for generating synthetic data: `preprocessing/synthetic/encode_coverage.R`
@@ -87,6 +89,12 @@ Parameters:
 # Synthetic data analysis - Pseudo single cells by subsampling
 Data in `datasets/ENCODE/scBS-seq/parsed/binarised`
 Scripts in `datasets/ENCODE/scBS-seq/preprocessing`
+
+## Imputation performance
+The same preprocessing steps as the real data. Use 40 H1-hESC (pseudo)-single cells and 40 GM12878 (pseudo)-single cells. 
+Filtering process: For `10kb` region keep regions with at least 10 CpGs coverage, and for `5kb` keep regions with at least 8 CpGs.
+
+During imputation process 3 different training procedures: 20%, 50% and 80% CpGs used for training set. The remaining CpGs are used for test set.
 
 
 # Mouse ESCs dataset - Angermueller 2016 / MT-Seq
