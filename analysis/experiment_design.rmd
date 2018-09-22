@@ -84,6 +84,11 @@ Parameters:
 * `total_sims = 5`                       (Total simulations)
 
 
+# Synthetic data analysis - Pseudo single cells by subsampling
+Data in `datasets/ENCODE/scBS-seq/parsed/binarised`
+Scripts in `datasets/ENCODE/scBS-seq/preprocessing`
+
+
 # Mouse ESCs dataset - Angermueller 2016 / MT-Seq
 
 ### Pre-processing
