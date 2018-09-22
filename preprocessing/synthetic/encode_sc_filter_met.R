@@ -8,7 +8,7 @@ suppressPackageStartupMessages(library(purrr))
 suppressPackageStartupMessages(library(GenomicRanges))
 
 dataset <- "ENCODE/"
-data_file  <- "prom5k"
+data_file  <- "prom10k"
 data_dir <- paste0("../../local-data/", dataset, "scBS-seq/processed/unfiltered/")
 out_dir <- paste0("../../local-data/melissa/met/filtered_met/", dataset)
 
@@ -20,7 +20,7 @@ annos <- obj$annos
 
 # Update options
 opts <- obj$opts
-opts$cov <- 8           # CpG density at each source
+opts$cov <- 10           # CpG density at each source
 opts$met_sd <- 0.05     # Metylation standard deviation across cells
 
 # Consider only regions with enough CpG coverage

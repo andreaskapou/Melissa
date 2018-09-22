@@ -21,8 +21,8 @@ io$met_files  <- sub(".tsv.gz", "", list.files(io$raw_met_dir, pattern = "*.gz",
 opts <- list()
 opts$is_centre  <- FALSE   # Whether genomic region is already pre-centred
 opts$is_window  <- TRUE    # Use predefined window region
-opts$upstream   <- -5000   # Upstream of centre
-opts$downstream <- 5000    # Downstream of centre
+opts$upstream   <- -2500   # Upstream of centre
+opts$downstream <- 2500    # Downstream of centre
 opts$chrom_size <- NULL    # Chromosome size file
 opts$cov        <- 3       # Regions with at least n CpGs
 opts$sd_thresh  <- -1      # Threshold for variance of methylation across region
@@ -69,4 +69,4 @@ names(met) <- io$met_files
 # # Store the results
 message("Storing results...")
 obj <- list(met = met, anno_region = anno_region, annos = annos, io = io, opts = opts)
-saveRDS(obj, file = paste0(io$out_dir, "prom10k.rds"))
+saveRDS(obj, file = paste0(io$out_dir, "prom5k.rds"))
