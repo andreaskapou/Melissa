@@ -14,7 +14,7 @@ indep_var_analysis <- function(opts, sim){
     # Iterate
     for (cl_iter in opts$cluster_var) {
         # Load synthetic data
-        io <- list(data_file = paste0("encode_data_", cl_iter, "_", sim, ".rds"),
+        io <- list(data_file = paste0("high_noise_encode_data_", cl_iter, "_", sim, ".rds"),
                    data_dir = "../../local-data/melissa/synthetic/imputation/dissimilarity/raw/data-sims/")
         obj <- readRDS(paste0(io$data_dir, io$data_file))
         # Partition to training and test sets
@@ -93,13 +93,13 @@ indep_var_analysis <- function(opts, sim){
 ##------------------------
 # Load synthetic data
 ##------------------------
-io <- list(data_file = paste0("raw/data-sims/encode_data_0.1_1.rds"),
+io <- list(data_file = paste0("raw/data-sims/high_noise_encode_data_0.1_1.rds"),
            out_dir = "../../local-data/melissa/synthetic/imputation/dissimilarity/")
 obj <- readRDS(paste0(io$out_dir, io$data_file))
 opts                   <- obj$opts # Get options
 opts$data_train_prcg   <- 0.1      # % of data to keep fully for training
 opts$region_train_prcg <- 1        # % of regions kept for training
-opts$cpg_train_prcg    <- 0.8      # % of CpGs kept for training in each region
+opts$cpg_train_prcg    <- 0.4      # % of CpGs kept for training in each region
 opts$is_parallel       <- TRUE     # Use parallelized version
 opts$no_cores          <- 3        # Number of cores
 rm(obj)
@@ -115,7 +115,7 @@ print(date())
 ##----------------------------------------------------------------------
 message("Storing results...")
 ##----------------------------------------------------------------------
-saveRDS(obj, file = paste0(io$out_dir, "encode_indep_K", opts$K,
+saveRDS(obj, file = paste0(io$out_dir, "high_noise_encode_indep_K", opts$K,
                            "_rbf", opts$basis_prof$M,
                            "_dataTrain", opts$data_train_prcg,
                            "_regionTrain", opts$region_train_prcg,

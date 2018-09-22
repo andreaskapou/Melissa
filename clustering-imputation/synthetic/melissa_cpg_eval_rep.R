@@ -12,7 +12,7 @@ melissa_cpg_analysis <- function(opts, sim){
     # Initialize lists
     melissa_prof = melissa_mean = eval_perf <- vector("list", length = length(opts$cpg_train_prcg))
     # Load synthetic data
-    io <- list(data_file = paste0("encode_data_", sim, ".rds"),
+    io <- list(data_file = paste0("high_noise_encode_data_", sim, ".rds"),
                data_dir = "../../local-data/melissa/synthetic/imputation/coverage/raw/data-sims/")
     obj <- readRDS(paste0(io$data_dir, io$data_file))
     i <- 1
@@ -64,7 +64,7 @@ melissa_cpg_analysis <- function(opts, sim){
 ##------------------------
 # Load synthetic data
 ##------------------------
-io <- list(data_file = paste0("raw/data-sims/encode_data_1.rds"),
+io <- list(data_file = paste0("raw/data-sims/high_noise_encode_data_1.rds"),
            out_dir = "../../local-data/melissa/synthetic/imputation/coverage/")
 obj <- readRDS(paste0(io$out_dir, io$data_file))
 opts                   <- obj$opts       # Get options
@@ -77,7 +77,7 @@ opts$cpg_train_prcg    <- seq(.1,.9,.1)  # % of CpGs kept for training in each r
 opts$is_kmeans         <- TRUE           # Use K-means for initialization
 opts$vb_max_iter       <- 300            # Maximum VB iterations
 opts$epsilon_conv      <- 1e-4           # Convergence threshold for VB
-opts$vb_init_nstart    <- 3              # Mini VB restarts
+opts$vb_init_nstart    <- 10             # Mini VB restarts
 opts$vb_init_max_iter  <- 20             # Mini VB iteratiions
 opts$is_parallel       <- TRUE           # Use parallelized version
 opts$no_cores          <- 4              # Number of cores
@@ -94,7 +94,7 @@ print(date())
 ##----------------------------------------------------------------------
 message("Storing results...")
 ##----------------------------------------------------------------------
-saveRDS(obj, file = paste0(io$out_dir, "encode_melissa_K", opts$K,
+saveRDS(obj, file = paste0(io$out_dir, "high_noise_encode_melissa_K", opts$K,
                            "_rbf", opts$basis_prof$M,
                            "_dataTrain", opts$data_train_prcg,
                            "_regionTrain", opts$region_train_prcg,

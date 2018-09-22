@@ -15,7 +15,7 @@ melissa_var_analysis <- function(opts, sim){
     # Iterate
     for (m in opts$cluster_var) {
         # Load synthetic data
-        io <- list(data_file = paste0("encode_data_", m, "_", sim, ".rds"),
+        io <- list(data_file = paste0("high_noise_encode_data_", m, "_", sim, ".rds"),
                    data_dir = "../../local-data/melissa/synthetic/imputation/dissimilarity/raw/data-sims/")
         obj <- readRDS(paste0(io$data_dir, io$data_file))
         # Partition to training and test sets
@@ -68,7 +68,7 @@ melissa_var_analysis <- function(opts, sim){
 ##------------------------
 # Load synthetic data
 ##------------------------
-io <- list(data_file = paste0("raw/data-sims/encode_data_0.1_1.rds"),
+io <- list(data_file = paste0("raw/data-sims/high_noise_encode_data_0.1_1.rds"),
            out_dir = "../../local-data/melissa/synthetic/imputation/dissimilarity/")
 obj <- readRDS(paste0(io$out_dir, io$data_file))
 opts                   <- obj$opts       # Get options
@@ -77,14 +77,14 @@ opts$alpha_0           <- 0.5            # Gamma prior
 opts$beta_0            <- 10             # Gamma prior
 opts$data_train_prcg   <- 0.1            # % of data to keep fully for training
 opts$region_train_prcg <- 1              # % of regions kept for training
-opts$cpg_train_prcg    <- 0.8            # % of CpGs kept for training in each region
+opts$cpg_train_prcg    <- 0.4            # % of CpGs kept for training in each region
 opts$is_kmeans         <- TRUE           # Use K-means for initialization
 opts$vb_max_iter       <- 300            # Maximum VB iterations
 opts$epsilon_conv      <- 1e-4           # Convergence threshold for VB
 opts$vb_init_nstart    <- 10             # Mini VB restarts
 opts$vb_init_max_iter  <- 20             # Mini VB iteratiions
 opts$is_parallel       <- TRUE           # Use parallelized version
-opts$no_cores          <- 5              # Number of cores
+opts$no_cores          <- 4              # Number of cores
 rm(obj)
 
 # Parallel analysis
@@ -98,7 +98,7 @@ print(date())
 ##----------------------------------------------------------------------
 message("Storing results...")
 ##----------------------------------------------------------------------
-saveRDS(obj, file = paste0(io$out_dir, "encode_melissa_K", opts$K,
+saveRDS(obj, file = paste0(io$out_dir, "high_noise_encode_melissa_K", opts$K,
                            "_rbf", opts$basis_prof$M,
                            "_dataTrain", opts$data_train_prcg,
                            "_regionTrain", opts$region_train_prcg,

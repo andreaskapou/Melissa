@@ -11,7 +11,7 @@ indep_cpg_analysis <- function(opts, sim){
     # Initialize lists
     indep_prof = indep_mean = eval_perf <- vector("list", length = length(opts$cpg_train_prcg))
     # Load synthetic data
-    io <- list(data_file = paste0("encode_data_", sim, ".rds"),
+    io <- list(data_file = paste0("high_noise_encode_data_", sim, ".rds"),
                data_dir = "../../local-data/melissa/synthetic/imputation/coverage/raw/data-sims/")
     obj <- readRDS(paste0(io$data_dir, io$data_file))
     i <- 1
@@ -92,7 +92,7 @@ indep_cpg_analysis <- function(opts, sim){
 ##------------------------
 # Load synthetic data
 ##------------------------
-io <- list(data_file = paste0("raw/data-sims/encode_data_1.rds"),
+io <- list(data_file = paste0("raw/data-sims/high_noise_encode_data_1.rds"),
            out_dir = "../../local-data/melissa/synthetic/imputation/coverage/")
 obj <- readRDS(paste0(io$out_dir, io$data_file))
 opts                   <- obj$opts      # Get options
@@ -114,7 +114,7 @@ print(date())
 ##----------------------------------------------------------------------
 message("Storing results...")
 ##----------------------------------------------------------------------
-saveRDS(obj, file = paste0(io$out_dir, "encode_indep_K", opts$K,
+saveRDS(obj, file = paste0(io$out_dir, "high_noise_encode_indep_K", opts$K,
                            "_rbf", opts$basis_prof$M,
                            "_dataTrain", opts$data_train_prcg,
                            "_regionTrain", opts$region_train_prcg,
