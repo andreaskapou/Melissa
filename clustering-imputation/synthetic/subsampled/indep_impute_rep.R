@@ -12,7 +12,7 @@ set.seed(123)
 ##------------------------------------
 # Load preprocessed data
 ##------------------------------------
-io <- list(dataset = "ENCODE", data_file = "prom10k", cov = 8, sd = 0.05)
+io <- list(dataset = "ENCODE", data_file = "prom5k", cov = 8, sd = 0.05)
 io$data_dir = "../../../local-data/melissa/"
 io$out_dir = paste0(io$data_dir, io$dataset, "/imputation/")
 dt <- readRDS(paste0(io$data_dir, "met/filtered_met/", io$dataset, "/", io$data_file,
@@ -27,7 +27,7 @@ opts$M                <- length(dt$met[[1]]) # Number of genomic regions
 opts$filt_region_cov  <- 0.5         # Filter low covered genomic regions
 opts$data_train_prcg  <- 0.4         # % of data to keep fully for training
 opts$region_train_prcg <- 0.95       # % of regions kept for training
-opts$cpg_train_prcg   <- 0.5         # % of CpGs kept for training in each region
+opts$cpg_train_prcg   <- 0.2         # % of CpGs kept for training in each region
 opts$is_parallel      <- TRUE        # Use parallelized version
 opts$no_cores         <- 3           # Number of cores
 opts$total_sims       <- 10          # Number of simulations
