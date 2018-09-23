@@ -219,3 +219,11 @@ dt %>%
   kable("html") %>%
   kable_styling()
 ```
+
+
+# DeepCpG ENCODE analysis steps
+
+1. Filter chromosomes for synthetic data chr1 - chr6: Using file /Melissa/preprocessing/synthetic/encode_sc_deepcpg_filter_chr.R
+
+
+
