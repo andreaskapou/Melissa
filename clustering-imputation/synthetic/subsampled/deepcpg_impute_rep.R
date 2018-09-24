@@ -2,7 +2,7 @@
 # Set working directory and load libraries
 # ------------------------------------------
 if (interactive()) {cur.dir <- dirname(parent.frame(2)$ofile); setwd(cur.dir)}
-R.utils::sourceDirectory("../../lib", modifiedOnly = FALSE)
+R.utils::sourceDirectory("../../../lib", modifiedOnly = FALSE)
 suppressPackageStartupMessages(library(BPRMeth))
 suppressPackageStartupMessages(library(data.table))
 suppressPackageStartupMessages(library(randomForest))
@@ -14,7 +14,7 @@ set.seed(123)
 # Load preprocessed data
 ##------------------------------------
 io <- list(dataset = "ENCODE", data_file = "prom10k", cov = 10, sd = 0.05)
-io$data_dir <- "../../local-data/melissa/"
+io$data_dir <- "../../../local-data/melissa/"
 io$sub_dir <- "/"
 io$out_dir <- paste0(io$data_dir, io$dataset, "/imputation/deepcpg/", io$sub_dir)
 dt <- readRDS(paste0(io$data_dir, "met/filtered_met/", io$dataset, "/deepcpg/", io$sub_dir, io$data_file,
