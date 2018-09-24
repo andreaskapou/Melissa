@@ -14,7 +14,7 @@ set.seed(123)
 ##------------------------------------
 # Load preprocessed data
 ##------------------------------------
-io <- list(dataset = "ENCODE", data_file = "prom5k", cov = 8, sd = 0.05)
+io <- list(dataset = "ENCODE", data_file = "prom10k", cov = 10, sd = 0.05)
 io$data_dir = "../../../local-data/melissa/"
 io$out_dir = paste0(io$data_dir, io$dataset, "/imputation/")
 dt <- readRDS(paste0(io$data_dir, "met/filtered_met/", io$dataset, "/", io$data_file,
@@ -40,9 +40,9 @@ opts$epsilon_conv     <- 1e-4        # Convergence threshold for VB
 opts$vb_init_nstart   <- 10          # Mini VB restarts
 opts$vb_init_max_iter <- 20          # Mini VB iteratiions
 opts$is_parallel      <- TRUE        # Use parallelized version
-opts$no_cores         <- 2           # Number of cores
+opts$no_cores         <- 3           # Number of cores
 opts$total_sims       <- 10          # Number of simulations
-opts$basis_prof       <- create_rbf_object(M = 9) # Profile basis functions
+opts$basis_prof       <- create_rbf_object(M = 5) # Profile basis functions
 opts$basis_mean       <- create_rbf_object(M = 0) # Rate basis function
 
 ##----------------------------------------------
