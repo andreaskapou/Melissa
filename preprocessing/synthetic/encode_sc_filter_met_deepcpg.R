@@ -8,11 +8,10 @@ suppressPackageStartupMessages(library(purrr))
 suppressPackageStartupMessages(library(GenomicRanges))
 R.utils::sourceDirectory("../../lib", modifiedOnly = FALSE)
 
-dataset   <- "smallwood-2014/"
-data_file <- "Nanog"
-sub_dir   <- "subsampled/"
-# sub_dir   <- "/"
-data_dir  <- paste0("../../local-data/", dataset, "met/deepcpg/processed_mm10_subsampled/unfiltered/")#, sub_dir)
+dataset   <- "ENCODE/"
+data_file <- "prom5k"
+sub_dir   <- "/"
+data_dir  <- paste0("../../local-data/", dataset, "scBS-seq/deepcpg/processed/unfiltered/")#, sub_dir)
 out_dir   <- paste0("../../local-data/melissa/met/filtered_met/", dataset)
 
 # Load deepcpg data
@@ -20,10 +19,10 @@ obj <- readRDS(paste0(data_dir, data_file, ".rds"))
 
 # Update options
 opts <- obj$opts
-opts$filter_chr <- c("3", "12", "14", "17")
-opts$cov <- 10          # CpG density at each source
+opts$filter_chr <- c("1", "3", "5")
+opts$cov <- 8            # CpG density at each source
 #opts$cov_deepcpg <- 3   # CpG density at each source
-opts$met_sd <- 0.2      # Variability
+opts$met_sd <- 0.05      # Variability
 
 ##------------------
 # Filter by chromosomes

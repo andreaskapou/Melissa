@@ -127,20 +127,19 @@ create_region_object_local <- function(met_dt, anno_dt, cov = 5, sd_thresh = 1e-
 #
 # # Data files
 io <- list(anno_name = "promoter")
-io$base_dir   <- "../../local-data/smallwood-2014"
-io$sub_dir    <- "subsampled/"
+io$base_dir   <- "../../local-data/ENCODE"
 io$sub_dir    <- "/"
-io$out_dir    <- paste0(io$base_dir, "/met/deepcpg/processed_mm10_subsampled/unfiltered/", io$sub_dir)
+io$out_dir    <- paste0(io$base_dir, "/scBS-seq/deepcpg/processed/unfiltered/", io$sub_dir)
 io$annos_file <- paste0(io$base_dir, "/annotations/", io$anno_name, ".bed")
-io$met_file   <- paste0(io$base_dir, "/met/deepcpg/raw_mm10_subsampled/", io$sub_dir, "data.h5")
+io$met_file   <- paste0(io$base_dir, "/scBS-seq/deepcpg/raw/", io$sub_dir, "data.h5")
 
 #
 # # Parameter options
 opts <- list()
-opts$is_centre  <- FALSE    # Whether genomic region is already pre-centred
+opts$is_centre  <- FALSE   # Whether genomic region is already pre-centred
 opts$is_window  <- TRUE    # Use predefined window region
-opts$upstream   <- -1500   # Upstream of centre
-opts$downstream <- 1500    # Downstream of centre
+opts$upstream   <- -2500   # Upstream of centre
+opts$downstream <- 2500    # Downstream of centre
 opts$chrom_size <- NULL    # Chromosome size file
 opts$cov        <- 3       # Regions with at least n CpGs
 opts$sd_thresh  <- -1      # Threshold for variance of methylation across region
@@ -169,7 +168,7 @@ anno_region <- create_anno_region(anno = annos, is_centre = opts$is_centre,
 # Extract h5 contents
 listing <- h5ls(io$met_file, all = TRUE)
 # Find all data nodes
-data_nodes <- grep("GSM", listing$name)
+data_nodes <- grep("rep", listing$name)
 # Extract full paths
 data_paths = paste(listing$group[data_nodes], listing$name[data_nodes], sep = "/")
 # Extract chromo
@@ -207,4 +206,4 @@ for (idx in 1:num_cells) {
 # # Store the results
 message("Storing results...")
 obj <- list(met = met_list, anno_region = anno_region, annos = annos, io = io, opts = opts)
-saveRDS(obj, file = paste0(io$out_dir, "prom3k.rds"))
+saveRDS(obj, file = paste0(io$out_dir, "prom5k.rds"))
