@@ -68,7 +68,7 @@ suppressPackageStartupMessages(library(matrixcalc))
 #'
 #' @author C.A.Kapourani \email{C.A.Kapourani@@ed.ac.uk}
 #'
-melissa_vb <- function(X, K = 3, basis = NULL, delta_0 = rep(1,K), w = NULL,
+melissa_vb <- function(X, K = 3, basis = NULL, delta_0 = NULL, w = NULL,
                        alpha_0 = .5, beta_0 = 10, vb_max_iter = 100,
                        epsilon_conv = 1e-5, is_kmeans = TRUE,
                        vb_init_nstart = 10, vb_init_max_iter = 20,
@@ -81,6 +81,8 @@ melissa_vb <- function(X, K = 3, basis = NULL, delta_0 = rep(1,K), w = NULL,
     N <- length(X)         # Total number of cells
     M <- length(X[[1]])    # Total number of genomic regions
     D <- basis$M + 1       # Number of basis functions
+
+    if (is.null(delta_0)) { delta_0 <- rep(1e-5, K) + rbeta(K, shape1 = 0.05, shape2 = 20) }
     # Number of parallel cores
     no_cores <- BPRMeth:::.parallel_cores(no_cores = no_cores,
                                           is_parallel = is_parallel,
@@ -325,7 +327,8 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
             # Update \beta_k parameter for Gamma
             beta_k[k]  <- beta_0 + 0.5*E_ww[k]
             # Check beta parameter for numerical issues
-            if (beta_k[k] > 10*alpha_k[k]) { beta_k[k] <- 10*alpha_k[k] }
+            # TODO: Does this affect model penalisation??
+            if (beta_k[k] > 1e+15*alpha_k[k]) { beta_k[k] <- 1e+15*alpha_k[k] }
         }
 
         # If parallel mode
@@ -395,23 +398,25 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
         # Variational lower bound
         ##-------------------------------
         # For efficiency we compute it every 10 iterations and surely on the maximum iteration threshold
+        # TODO: Find a better way to not obtain Inf in the pnorm function
         if (i %% 10 == 0 | i == vb_max_iter) {
             mk_Sk <- lapply(X = 1:M, FUN = function(m) lapply(X = 1:K,
                     FUN = function(k) tcrossprod(m_k[m, , k]) + S_k[[k]][[m]]))
             if (is_parallel) {
+                # TODO: Find a better way to not obtain Inf in the pnorm function
                 lb_pz_qz <- sum(unlist(parallel::mclapply(X = 1:N,
                     FUN = function(n) sum(sapply(X = region_ind[[n]],
                     FUN = function(m) 0.5*crossprod(mu[[n]][[m]]) +
-                    sum(y[[n]][[m]] * log(1 - pnorm(-mu[[n]][[m]])) + (1 - y[[n]][[m]]) *
-                    log(pnorm(-mu[[n]][[m]]))) - 0.5*sum(sapply(X = 1:K, FUN = function(k)
+                    sum(y[[n]][[m]] * log(1 - (pnorm(-mu[[n]][[m]]) - 1e-10) ) + (1 - y[[n]][[m]]) *
+                    log(pnorm(-mu[[n]][[m]]) + 1e-10)) - 0.5*sum(sapply(X = 1:K, FUN = function(k)
                     r_nk[n,k] * matrix.trace(HH[[n]][[m]] %*% mk_Sk[[m]][[k]]) )))),
                     mc.cores = no_cores)))
             }else {
                 lb_pz_qz <- sum(sapply(X = 1:N, FUN = function(n)
                     sum(sapply(X = region_ind[[n]],
                     FUN = function(m) 0.5*crossprod(mu[[n]][[m]]) +
-                    sum(y[[n]][[m]] * log(1 - pnorm(-mu[[n]][[m]])) + (1 - y[[n]][[m]]) *
-                    log(pnorm(-mu[[n]][[m]]))) - 0.5*sum(sapply(X = 1:K, FUN = function(k)
+                    sum(y[[n]][[m]] * log(1 - (pnorm(-mu[[n]][[m]]) - 1e-10) ) + (1 - y[[n]][[m]]) *
+                    log(pnorm(-mu[[n]][[m]]) + 1e-10)) - 0.5*sum(sapply(X = 1:K, FUN = function(k)
                     r_nk[n,k] * matrix.trace(HH[[n]][[m]] %*% mk_Sk[[m]][[k]]) )) ))))
             }
             lb_p_w   <- sum(-0.5*M*D*log(2*pi) + 0.5*M*D*(digamma(alpha_k) -
