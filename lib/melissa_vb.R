@@ -330,7 +330,7 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
             # Check beta parameter for numerical issues
             if (is.nan(beta_k[k]) | is.na(beta_k[k]) ) { beta_k[k] <- 1e10}
             # TODO: Does this affect model penalisation??
-            if (beta_k[k] > 1e+10*alpha_k[k]) { beta_k[k] <- 1e+10*alpha_k[k] }
+            if (beta_k[k] > 1e+7*alpha_k[k]) { beta_k[k] <- 1e+7*alpha_k[k] }
         }
 
         # If parallel mode
