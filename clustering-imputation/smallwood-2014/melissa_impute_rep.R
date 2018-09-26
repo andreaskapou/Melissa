@@ -27,22 +27,22 @@ opts                  <- dt$opts
 opts$K                <- 5           # Number of clusters
 opts$N                <- length(dt$met) # Number of cells
 opts$M                <- length(dt$met[[1]]) # Number of genomic regions
-opts$delta_0          <- rep(.1, opts$K)   # Dirichlet prior
-opts$alpha_0          <- 0.5         # Gamma prior
-opts$beta_0           <- 2           # Gamma prior
+opts$delta_0          <- rep(4, opts$K)   # Dirichlet prior
+opts$alpha_0          <- 1e-10       # Gamma prior
+opts$beta_0           <- 1e+15       # Gamma prior
 opts$filt_region_cov  <- 0.5         # Filter low covered genomic regions
 opts$data_train_prcg  <- 0.4         # % of data to keep fully for training
 opts$region_train_prcg <- 0.95       # % of regions kept for training
 opts$cpg_train_prcg   <- 0.5         # % of CpGs kept for training in each region
 opts$is_kmeans        <- TRUE        # Use K-means for initialization
-opts$vb_max_iter      <- 400         # Maximum VB iterations
+opts$vb_max_iter      <- 500         # Maximum VB iterations
 opts$epsilon_conv     <- 1e-4        # Convergence threshold for VB
 opts$vb_init_nstart   <- 10          # Mini VB restarts
 opts$vb_init_max_iter <- 20          # Mini VB iteratiions
 opts$is_parallel      <- TRUE        # Use parallelized version
 opts$no_cores         <- 4           # Number of cores
 opts$total_sims       <- 10          # Number of simulations
-opts$basis_prof       <- create_rbf_object(M = 11) # Profile basis functions
+opts$basis_prof       <- create_rbf_object(M = 9) # Profile basis functions
 opts$basis_mean       <- create_rbf_object(M = 0) # Rate basis function
 
 ##----------------------------------------------
@@ -72,7 +72,7 @@ print(date())
 message("Storing results...")
 ##----------------------------------------------------------------------
 obj <- list(model = model, annos = annos, anno_region = anno_region, io = io, opts = opts)
-saveRDS(obj, file = paste0(io$out_dir, "melissa_sim", opts$total_sims,
+saveRDS(obj, file = paste0(io$out_dir, "diffuse_melissa_sim", opts$total_sims,
                            "_", io$data_file,
                            "_cov", io$cov,
                            "_sd", io$sd,
