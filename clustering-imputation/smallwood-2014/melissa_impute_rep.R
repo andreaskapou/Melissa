@@ -14,7 +14,7 @@ set.seed(123)
 ##------------------------------------
 # Load preprocessed data
 ##------------------------------------
-io <- list(dataset = "smallwood-2014", data_file = "active_enhancers", cov = 10, sd = 0.2)
+io <- list(dataset = "smallwood-2014", data_file = "super_enhancers", cov = 10, sd = 0.2)
 io$data_dir = "../../local-data/melissa/"
 io$out_dir = paste0(io$data_dir, io$dataset, "/imputation/")
 dt <- readRDS(paste0(io$data_dir, "met/filtered_met/", io$dataset, "/", io$data_file,
@@ -29,7 +29,7 @@ opts$N                <- length(dt$met) # Number of cells
 opts$M                <- length(dt$met[[1]]) # Number of genomic regions
 opts$delta_0          <- rep(4, opts$K)   # Dirichlet prior
 opts$alpha_0          <- 1e-10       # Gamma prior
-opts$beta_0           <- 1e+15       # Gamma prior
+opts$beta_0           <- 1e+10       # Gamma prior
 opts$filt_region_cov  <- 0.5         # Filter low covered genomic regions
 opts$data_train_prcg  <- 0.4         # % of data to keep fully for training
 opts$region_train_prcg <- 0.95       # % of regions kept for training
