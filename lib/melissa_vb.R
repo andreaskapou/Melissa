@@ -292,7 +292,7 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
                     tmp_H  <- lapply(H, "[[", m)
                     tmp_Ez <- lapply(E_z, "[[", m)
                     # Update covariance for Gaussian
-                    S_k <- solve(diag(alpha_k[k]/beta_k[k], D) +
+                    S_k <- solve(diag(alpha_k[k]/beta_k[k] + 1e-12, D) +
                         BPRMeth:::.add_func(lapply(X = cell_ind[[m]], FUN = function(n) tmp_HH[[n]]*r_nk[n,k])))
                     # Update mean for Gaussian
                     m_k <- S_k %*% BPRMeth:::.add_func(lapply(X = cell_ind[[m]],
@@ -303,12 +303,13 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
                 }, mc.cores = no_cores)
             } else{
                 tmp <- lapply(X = 1:M, function(m) {
+                    print(m)
                     # Extract temporary objects
                     tmp_HH <- lapply(HH, "[[", m)
                     tmp_H  <- lapply(H, "[[", m)
                     tmp_Ez <- lapply(E_z, "[[", m)
                     # Update covariance for Gaussian
-                    S_k <- solve(diag(alpha_k[k]/beta_k[k], D) +
+                    S_k <- solve(diag(alpha_k[k]/beta_k[k] + 1e-12, D) +
                         BPRMeth:::.add_func(lapply(X = cell_ind[[m]], FUN = function(n) tmp_HH[[n]]*r_nk[n,k])))
                     # Update mean for Gaussian
                     m_k <- S_k %*% BPRMeth:::.add_func(lapply(X = cell_ind[[m]],

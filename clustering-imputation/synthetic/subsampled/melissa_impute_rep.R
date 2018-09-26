@@ -27,7 +27,7 @@ opts                  <- dt$opts
 opts$K                <- 3           # Number of clusters
 opts$N                <- length(dt$met) # Number of cells
 opts$M                <- length(dt$met[[1]]) # Number of genomic regions
-opts$delta_0          <- rep(5, opts$K)
+opts$delta_0          <- rep(5, opts$K) # Dirichlet prior
 opts$alpha_0          <- 1e-10       # Gamma prior
 opts$beta_0           <- 1e+15       # Gamma prior
 opts$filt_region_cov  <- 0.5         # Filter low covered genomic regions
