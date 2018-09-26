@@ -292,7 +292,7 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
                     tmp_H  <- lapply(H, "[[", m)
                     tmp_Ez <- lapply(E_z, "[[", m)
                     # Update covariance for Gaussian
-                    S_k <- solve(diag(alpha_k[k]/beta_k[k] + 1e-9, D) +
+                    S_k <- solve(diag(alpha_k[k]/beta_k[k] + 1e-7, D) +
                         BPRMeth:::.add_func(lapply(X = cell_ind[[m]], FUN = function(n) tmp_HH[[n]]*r_nk[n,k])))
                     # Update mean for Gaussian
                     m_k <- S_k %*% BPRMeth:::.add_func(lapply(X = cell_ind[[m]],
@@ -309,7 +309,7 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
                     tmp_Ez <- lapply(E_z, "[[", m)
                     # Update covariance for Gaussian
                     # TODO: How to make this numerically stable? Does the addition have strong effects?
-                    S_k <- solve(diag(alpha_k[k]/beta_k[k] + 1e-9, D) +
+                    S_k <- solve(diag(alpha_k[k]/beta_k[k] + 1e-7, D) +
                         BPRMeth:::.add_func(lapply(X = cell_ind[[m]], FUN = function(n) tmp_HH[[n]]*r_nk[n,k])))
                     # Update mean for Gaussian
                     m_k <- S_k %*% BPRMeth:::.add_func(lapply(X = cell_ind[[m]],
@@ -328,8 +328,9 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
             # Update \beta_k parameter for Gamma
             beta_k[k]  <- beta_0 + 0.5*E_ww[k]
             # Check beta parameter for numerical issues
+            if (is.nan(beta_k[k]) | is.na(beta_k[k]) ) { beta_k[k] <- 1e10}
             # TODO: Does this affect model penalisation??
-            if (beta_k[k] > 1e+40*alpha_k[k]) { beta_k[k] <- 1e+40*alpha_k[k] }
+            if (beta_k[k] > 1e+10*alpha_k[k]) { beta_k[k] <- 1e+10*alpha_k[k] }
         }
 
         # If parallel mode
