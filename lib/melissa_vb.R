@@ -82,7 +82,7 @@ melissa_vb <- function(X, K = 3, basis = NULL, delta_0 = NULL, w = NULL,
     M <- length(X[[1]])    # Total number of genomic regions
     D <- basis$M + 1       # Number of basis functions
 
-    if (is.null(delta_0)) { delta_0 <- rep(1e-5, K) + rbeta(K, shape1 = 0.05, shape2 = 20) }
+    if (is.null(delta_0)) { delta_0 <- rep(1e-5, K) }
     # Number of parallel cores
     no_cores <- BPRMeth:::.parallel_cores(no_cores = no_cores,
                                           is_parallel = is_parallel,
@@ -328,7 +328,7 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
             beta_k[k]  <- beta_0 + 0.5*E_ww[k]
             # Check beta parameter for numerical issues
             # TODO: Does this affect model penalisation??
-            if (beta_k[k] > 1e+15*alpha_k[k]) { beta_k[k] <- 1e+15*alpha_k[k] }
+            if (beta_k[k] > 1e+40*alpha_k[k]) { beta_k[k] <- 1e+40*alpha_k[k] }
         }
 
         # If parallel mode
