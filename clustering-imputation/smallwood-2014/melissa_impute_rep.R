@@ -27,9 +27,9 @@ opts                  <- dt$opts
 opts$K                <- 5           # Number of clusters
 opts$N                <- length(dt$met) # Number of cells
 opts$M                <- length(dt$met[[1]]) # Number of genomic regions
-opts$delta_0          <- rep(4, opts$K)   # Dirichlet prior
-opts$alpha_0          <- 1e-5       # Gamma prior
-opts$beta_0           <- 1e+5       # Gamma prior
+opts$delta_0          <- rep(.1, opts$K)   # Dirichlet prior
+opts$alpha_0          <- 0.5         # Gamma prior
+opts$beta_0           <- 2           # Gamma prior
 opts$filt_region_cov  <- 0.5         # Filter low covered genomic regions
 opts$data_train_prcg  <- 0.4         # % of data to keep fully for training
 opts$region_train_prcg <- 0.95       # % of regions kept for training
@@ -72,7 +72,7 @@ print(date())
 message("Storing results...")
 ##----------------------------------------------------------------------
 obj <- list(model = model, annos = annos, anno_region = anno_region, io = io, opts = opts)
-saveRDS(obj, file = paste0(io$out_dir, "diffuse_melissa_sim", opts$total_sims,
+saveRDS(obj, file = paste0(io$out_dir, "melissa_sanity_sim", opts$total_sims,
                            "_", io$data_file,
                            "_cov", io$cov,
                            "_sd", io$sd,
