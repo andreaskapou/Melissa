@@ -288,7 +288,7 @@ melissa_vb_inner_original <- function(H, y, region_ind, cell_ind, K, basis, w, d
             # Update \beta_k parameter for Gamma
             beta_k[k]  <- beta_0 + 0.5*E_ww[k]
             # Check beta parameter for numerical issues
-            if (beta_k[k] > 10*alpha_k[k]) { beta_k[k] <- 10*alpha_k[k] }
+            if (beta_k[k] > 50*alpha_k[k]) { beta_k[k] <- 50*alpha_k[k] }
         }
 
         if (is_parallel) {
@@ -356,16 +356,16 @@ melissa_vb_inner_original <- function(H, y, region_ind, cell_ind, K, basis, w, d
             lb_pz_qz <- sum(unlist(parallel::mclapply(X = 1:N,
                 FUN = function(n) sum(sapply(X = region_ind[[n]],
                 FUN = function(m) 0.5*crossprod(mu[[n]][[m]]) +
-                sum(y[[n]][[m]] * log(1 - pnorm(-mu[[n]][[m]])) + (1 - y[[n]][[m]]) *
-                log(pnorm(-mu[[n]][[m]]))) - 0.5*sum(sapply(X = 1:K, FUN = function(k)
+                sum(y[[n]][[m]] * log(1 - pnorm(-mu[[n]][[m]]) - 1e-10) + (1 - y[[n]][[m]]) *
+                log(pnorm(-mu[[n]][[m]]) + 1e-10)) - 0.5*sum(sapply(X = 1:K, FUN = function(k)
                 r_nk[n,k] * matrix.trace(HH[[n]][[m]] %*% mk_Sk[[m]][[k]]) )))),
                 mc.cores = no_cores)))
         }else {
             lb_pz_qz <- sum(sapply(X = 1:N, FUN = function(n)
                 sum(sapply(X = region_ind[[n]],
                 FUN = function(m) 0.5*crossprod(mu[[n]][[m]]) +
-                sum(y[[n]][[m]] * log(1 - pnorm(-mu[[n]][[m]])) + (1 - y[[n]][[m]]) *
-                log(pnorm(-mu[[n]][[m]]))) - 0.5*sum(sapply(X = 1:K, FUN = function(k)
+                sum(y[[n]][[m]] * log(1 - pnorm(-mu[[n]][[m]]) - 1e-10) + (1 - y[[n]][[m]]) *
+                log(pnorm(-mu[[n]][[m]]) + 1e-10)) - 0.5*sum(sapply(X = 1:K, FUN = function(k)
                 r_nk[n,k] * matrix.trace(HH[[n]][[m]] %*% mk_Sk[[m]][[k]]) )) ))))
         }
         lb_p_w   <- sum(-0.5*M*D*log(2*pi) + 0.5*M*D*(digamma(alpha_k) -
