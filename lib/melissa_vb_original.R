@@ -214,7 +214,7 @@ melissa_vb_inner_original <- function(H, y, region_ind, cell_ind, K, basis, w, d
     # Mean for each cluster
     m_k <- w
     # Covariance of each cluster
-    S_k <- lapply(X = 1:M, function(m) lapply(X = 1:K, FUN = function(k) solve(diag(2, D))))
+    S_k <- lapply(X = 1:M, function(m) lapply(X = 1:K, FUN = function(k) solve(diag(50, D))))
     # Scale of precision matrix
     beta_k   <- rep(beta_0, K)
     # Dirichlet parameter
@@ -277,7 +277,7 @@ melissa_vb_inner_original <- function(H, y, region_ind, cell_ind, K, basis, w, d
                 tmp_H  <- lapply(H, "[[", m)
                 tmp_Ez <- lapply(E_z, "[[", m)
                 # Update covariance for Gaussian
-                S_k[[m]][[k]] <- solve(diag(alpha_k[k]/beta_k[k], D) +
+                S_k[[m]][[k]] <- solve(diag(alpha_k[k]/beta_k[k] + 1e-7, D) +
                     BPRMeth:::.add_func(lapply(X = cell_ind[[m]], FUN = function(n) tmp_HH[[n]]*r_nk[n,k])))
                 # Update mean for Gaussian
                 m_k[m,,k] <- S_k[[m]][[k]] %*% BPRMeth:::.add_func(lapply(X = cell_ind[[m]],
@@ -385,7 +385,6 @@ melissa_vb_inner_original <- function(H, y, region_ind, cell_ind, K, basis, w, d
         # Sum all parts to compute lower bound
         LB <- c(LB, lb_pz_qz + lb_p_c + lb_p_pi + lb_p_w + lb_p_tau - lb_q_c -
                    lb_q_pi - lb_q_w - lb_q_tau)
-
         # Show VB difference
         if (is_verbose) {
             if (i %% 50 == 0) {

@@ -217,8 +217,9 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
     # Mean for each cluster
     m_k <- w
     # Covariance of each cluster
-    S_k <- lapply(X = 1:K, function(k) lapply(X = 1:M, FUN = function(m) solve(diag(2, D))))
+    S_k <- lapply(X = 1:K, function(k) lapply(X = 1:M, FUN = function(m) solve(diag(50, D))))
     # Scale of precision matrix
+    if (is.null(beta_0)) { beta_0 <- alpha_k[1] }
     beta_k   <- rep(beta_0, K)
     # Dirichlet parameter
     delta_k  <- delta_0
@@ -274,7 +275,6 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
         # Calculate responsibilities using logSumExp for numerical stability
         log_r_nk <- log_rho_nk - apply(log_rho_nk, 1, log_sum_exp)
         r_nk     <- exp(log_r_nk)
-
         ##-------------------------------
         # Variational M-Step
         ##-------------------------------
@@ -330,7 +330,7 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
             # Check beta parameter for numerical issues
             # if (is.nan(beta_k[k]) | is.na(beta_k[k]) ) { beta_k[k] <- 1e10}
             # TODO: Does this affect model penalisation??
-            if (beta_k[k] > 10*alpha_k[k]) { beta_k[k] <- 10*alpha_k[k] }
+            if (beta_k[k] > 50*alpha_k[k]) { beta_k[k] <- 50*alpha_k[k] }
         }
 
         # If parallel mode
