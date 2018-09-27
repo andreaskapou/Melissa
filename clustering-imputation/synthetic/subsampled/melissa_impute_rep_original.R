@@ -2,7 +2,7 @@
 # Set working directory and load libraries
 # ------------------------------------------
 if (interactive()) {cur.dir <- dirname(parent.frame(2)$ofile); setwd(cur.dir)}
-R.utils::sourceDirectory("../../lib", modifiedOnly = FALSE)
+R.utils::sourceDirectory("../../../lib", modifiedOnly = FALSE)
 suppressPackageStartupMessages(library(BPRMeth))
 suppressPackageStartupMessages(library(data.table))
 suppressPackageStartupMessages(library(matrixcalc))
@@ -14,8 +14,8 @@ set.seed(123)
 ##------------------------------------
 # Load preprocessed data
 ##------------------------------------
-io <- list(dataset = "smallwood-2014", data_file = "Nanog", cov = 10, sd = 0.2)
-io$data_dir = "../../local-data/melissa/"
+io <- list(dataset = "ENCODE", data_file = "prom10k", cov = 10, sd = 0.05)
+io$data_dir = "../../../local-data/melissa/"
 io$out_dir = paste0(io$data_dir, io$dataset, "/imputation/")
 dt <- readRDS(paste0(io$data_dir, "met/filtered_met/", io$dataset, "/", io$data_file,
                      "_cov", io$cov, "_sd", io$sd, ".rds"))
@@ -24,12 +24,12 @@ dt <- readRDS(paste0(io$data_dir, "met/filtered_met/", io$dataset, "/", io$data_
 # Initialize parameters
 ##------------------------------------
 opts                  <- dt$opts
-opts$K                <- 5           # Number of clusters
+opts$K                <- 3           # Number of clusters
 opts$N                <- length(dt$met) # Number of cells
 opts$M                <- length(dt$met[[1]]) # Number of genomic regions
-opts$delta_0          <- rep(.1, opts$K)   # Dirichlet prior
-opts$alpha_0          <- 0.5         # Gamma prior
-opts$beta_0           <- 2           # Gamma prior
+opts$delta_0          <- rep(5, opts$K) # Dirichlet prior
+opts$alpha_0          <- .5        # Gamma prior
+opts$beta_0           <- 15        # Gamma prior
 opts$filt_region_cov  <- 0.5         # Filter low covered genomic regions
 opts$data_train_prcg  <- 0.4         # % of data to keep fully for training
 opts$region_train_prcg <- 0.95       # % of regions kept for training
@@ -65,14 +65,14 @@ print(date())
 message(io$data_file)
 message(opts$basis_prof$M)
 model <- parallel::mclapply(X = 1:opts$total_sims, FUN = function(sim)
-    melissa_imputation_analysis(X = met, opts = opts), mc.cores = no_cores_out)
+    melissa_imputation_analysis_original(X = met, opts = opts), mc.cores = no_cores_out)
 print(date())
 
 ##----------------------------------------------------------------------
 message("Storing results...")
 ##----------------------------------------------------------------------
 obj <- list(model = model, annos = annos, anno_region = anno_region, io = io, opts = opts)
-saveRDS(obj, file = paste0(io$out_dir, "melissa_original_sim", opts$total_sims,
+saveRDS(obj, file = paste0(io$out_dir, "original_melissa_sim", opts$total_sims,
                            "_", io$data_file,
                            "_cov", io$cov,
                            "_sd", io$sd,
