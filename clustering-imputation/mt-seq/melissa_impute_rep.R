@@ -27,9 +27,9 @@ opts                  <- dt$opts
 opts$K                <- 6           # Number of clusters
 opts$N                <- length(dt$met) # Number of cells
 opts$M                <- length(dt$met[[1]]) # Number of genomic regions
-opts$delta_0          <- rep(.1, opts$K)   # Dirichlet prior
+opts$delta_0          <- rep(3, opts$K)   # Dirichlet prior
 opts$alpha_0          <- 0.5         # Gamma prior
-opts$beta_0           <- 15          # Gamma prior
+opts$beta_0           <- NULL        # Gamma prior (if NULL beta_0 := alpha_0 + M*D/2)
 opts$filt_region_cov  <- 0.5         # Filter low covered genomic regions
 opts$data_train_prcg  <- 0.4         # % of data to keep fully for training
 opts$region_train_prcg <- 0.95       # % of regions kept for training
