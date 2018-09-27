@@ -24,7 +24,7 @@ suppressPackageStartupMessages(library(ROCR))
 suppressPackageStartupMessages(library(scales))
 suppressPackageStartupMessages(library(data.table))
 suppressPackageStartupMessages(library(ggfortify))
-suppressPackageStartupMessages(library(stringi))
+#suppressPackageStartupMessages(library(stringi))
 suppressPackageStartupMessages(library(proxy))
 suppressPackageStartupMessages(library(RColorBrewer))
 ```
@@ -72,7 +72,7 @@ model_analysis <- data.table(region = character(), melissa = numeric(), melissa_
 iter <- 1
 for (region in io$regions) {
    # Load joint analysis results
-   dt_melissa <- readRDS(paste0(io$data_dir, "melissa_sim10_", region, 
+   dt_melissa_diff <- readRDS(paste0(io$data_dir, "diffuse_melissa_sim10_", region, 
                               "_cov", io$cov[iter], "_sd0.2_K", io$K, "_M", io$M[iter], 
                               "_basis", io$basis[iter], "_dataPrcg", io$data_prcg, 
                               "_regionPrcg", io$reg_prcg, "_cpgPrcg", io$cpg_prcg,
