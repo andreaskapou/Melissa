@@ -67,7 +67,7 @@ melissa_obj <- melissa_vb(X = dt$train, K = opts$K, basis = opts$basis_prof,
                           delta_0 = opts$delta_0, alpha_0 = opts$alpha_0, beta_0 = opts$beta_0,
                           vb_max_iter = opts$vb_max_iter, epsilon_conv = opts$epsilon_conv,
                           is_kmeans = opts$is_kmeans, vb_init_nstart = opts$vb_init_nstart,
-                          vb_init_max_iter = opts$vb_init_max_iter, is_parallel = FALSE,
+                          vb_init_max_iter = opts$vb_init_max_iter, is_parallel = TRUE,
                           no_cores = 2, is_verbose = TRUE)
 
 
