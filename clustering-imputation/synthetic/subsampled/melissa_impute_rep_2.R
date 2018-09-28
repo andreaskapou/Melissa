@@ -27,9 +27,9 @@ opts                  <- dt$opts
 opts$K                <- 3           # Number of clusters
 opts$N                <- length(dt$met) # Number of cells
 opts$M                <- length(dt$met[[1]]) # Number of genomic regions
-opts$delta_0          <- rep(3, opts$K) # Dirichlet prior
+opts$delta_0          <- rep(3, opts$K) + rbeta(opts$K, 1e-1, 1e1)   # Dirichlet prior
 opts$alpha_0          <- .5          # Gamma prior
-opts$beta_0           <- NULL        # Gamma prior (if NULL beta_0 := alpha_0 + M*D/2)
+opts$beta_0           <- NULL        # Gamma prior (if NULL beta_0 := sqrt(alpha_0 + M*D/2))
 opts$filt_region_cov  <- 0.5         # Filter low covered genomic regions
 opts$data_train_prcg  <- 0.4         # % of data to keep fully for training
 opts$region_train_prcg <- 0.95       # % of regions kept for training
@@ -40,7 +40,7 @@ opts$epsilon_conv     <- 1e-4        # Convergence threshold for VB
 opts$vb_init_nstart   <- 10          # Mini VB restarts
 opts$vb_init_max_iter <- 20          # Mini VB iteratiions
 opts$is_parallel      <- TRUE        # Use parallelized version
-opts$no_cores         <- 4           # Number of cores
+opts$no_cores         <- 2           # Number of cores
 opts$total_sims       <- 10          # Number of simulations
 opts$basis_prof       <- create_rbf_object(M = 9) # Profile basis functions
 opts$basis_mean       <- create_rbf_object(M = 0) # Rate basis function

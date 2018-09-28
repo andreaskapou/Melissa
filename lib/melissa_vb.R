@@ -147,7 +147,9 @@ melissa_vb <- function(X, K = 3, basis = NULL, delta_0 = NULL, w = NULL,
                                         no_cores = no_cores, is_verbose = is_verbose)
             # Check if NLL is lower and keep the optimal params
             lb_cur <- utils::tail(mini_vb$lb, n = 1)
-            if (lb_cur > lb_prev) { optimal_w <- mini_vb$W; lb_prev <- lb_cur; }
+            # TODO: Best way to obtain initial params after mini-restarts
+            # if (lb_cur > lb_prev) { optimal_w <- mini_vb$W; lb_prev <- lb_cur; }
+            if (lb_cur > lb_prev) { optimal_w <- w; lb_prev <- lb_cur; }
         }
     }
     # Run final VB
@@ -219,7 +221,7 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
     # Covariance of each cluster
     S_k <- lapply(X = 1:K, function(k) lapply(X = 1:M, FUN = function(m) solve(diag(50, D))))
     # Scale of precision matrix
-    if (is.null(beta_0)) { beta_0 <- alpha_k[1] }
+    if (is.null(beta_0)) { beta_0 <- sqrt(alpha_k[1]) }
     beta_k   <- rep(beta_0, K)
     # Dirichlet parameter
     delta_k  <- delta_0
@@ -401,7 +403,7 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
         ##-------------------------------
         # For efficiency we compute it every 10 iterations and surely on the maximum iteration threshold
         # TODO: Find a better way to not obtain Inf in the pnorm function
-        #if (i %% 10 == 0 | i == vb_max_iter) {
+        if (i %% 10 == 0 | i == vb_max_iter) {
             mk_Sk <- lapply(X = 1:M, FUN = function(m) lapply(X = 1:K,
                     FUN = function(k) tcrossprod(m_k[m, , k]) + S_k[[k]][[m]]))
             if (is_parallel) {
@@ -449,13 +451,13 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
                     cat("\r","It:\t",i,"\tLB:\t",LB[iter],"\tDiff:\t",LB[iter] - LB[iter - 1],"\n")
                 }
             }
-        #}
-            tmp <- c(rep(0, K))
-            for (k in 1:K) { tmp[k] <- length(which(r_nk[,k] > 0.8)) }
-            print(colSums(r_nk))
-            print(tmp)
-            print(beta_k)
-            print(LB[iter])
+        }
+            # tmp <- c(rep(0, K))
+            # for (k in 1:K) { tmp[k] <- length(which(r_nk[,k] > 0.8)) }
+            # print(colSums(r_nk))
+            # print(tmp)
+            # print(beta_k)
+            # print(LB[iter])
         # Check if VB converged in the given maximum iterations
         if (i == vb_max_iter) {warning("VB did not converge!\n")}
         if (is_verbose) { utils::setTxtProgressBar(pb, i) }
@@ -465,7 +467,7 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
     # Store the object
     obj <- list(W = m_k, W_Sigma = S_k, r_nk = r_nk, delta = delta_k,
                 alpha = alpha_k, beta = beta_k, basis = basis, pi_k = pi_k,
-                lb = LB)
+                lb = LB, delta_0 = delta_0, alpha_0 = alpha_0, beta_0 = beta_0)
     class(obj) <- "melissa_vb"
     return(obj)
 }

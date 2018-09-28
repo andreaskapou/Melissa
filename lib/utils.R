@@ -577,67 +577,6 @@ melissa_imputation_analysis <- function(X, opts){
 }
 
 
-#' @title Melissa model imputation analysis
-#'
-#'
-melissa_imputation_analysis_original <- function(X, opts){
-    # Partition to training and test sets
-    dt <- partition_dataset(X = X, data_train_prcg = opts$data_train_prcg,
-                            region_train_prcg = opts$region_train_prcg,
-                            cpg_train_prcg = opts$cpg_train_prcg, is_synth = FALSE)
-    rm(X)
-    # Run CC EM algorithm
-    print("Starting Melissa model - profile")
-    scvb_prof <- tryCatch({
-        melissa_obj <- melissa_vb_original(X = dt$train, K = opts$K, basis = opts$basis_prof,
-                                  delta_0 = opts$delta_0, alpha_0 = opts$alpha_0, beta_0 = opts$beta_0,
-                                  vb_max_iter = opts$vb_max_iter, epsilon_conv = opts$epsilon_conv,
-                                  is_kmeans = opts$is_kmeans, vb_init_nstart = opts$vb_init_nstart,
-                                  vb_init_max_iter = opts$vb_init_max_iter, is_parallel = opts$is_parallel,
-                                  no_cores = opts$no_cores, is_verbose = TRUE)
-    }, error = function(err){
-        # error handler picks up where error was generated
-        print(paste("ERROR:  ", err)); return(NULL)
-    }) # END tryCatch
-
-    # Using methylation profiles
-    eval_prof <- eval_performance(obj = scvb_prof, test = dt$test)
-    ##----------------------------------------------------------------------
-    message("Computing AUC...")
-    ##----------------------------------------------------------------------
-    pred_prof <- prediction(eval_prof$pred_obs, eval_prof$act_obs)
-    auc_prof <- performance(pred_prof, "auc")
-    message(unlist(auc_prof@y.values))
-
-    print("Starting Melissa model - rate")
-    scvb_mean <- tryCatch({
-        melissa_obj <- melissa_vb_original(X = dt$train, K = opts$K, basis = opts$basis_mean,
-                                  delta_0 = opts$delta_0, alpha_0 = opts$alpha_0, beta_0 = opts$beta_0,
-                                  vb_max_iter = opts$vb_max_iter, epsilon_conv = opts$epsilon_conv,
-                                  is_kmeans = opts$is_kmeans, vb_init_nstart = opts$vb_init_nstart,
-                                  vb_init_max_iter = opts$vb_init_max_iter, is_parallel = opts$is_parallel,
-                                  no_cores = opts$no_cores, is_verbose = TRUE)
-    }, error = function(err){
-        # error handler picks up where error was generated
-        print(paste("ERROR:  ", err)); return(NULL)
-    }) # END tryCatch
-
-    ##----------------------------------------------------------------------
-    message("Computing AUC...")
-    ##----------------------------------------------------------------------
-    # Using methylation rate
-    eval_mean <- eval_performance(obj = scvb_mean, test = dt$test)
-    pred_mean <- prediction(eval_mean$pred_obs, eval_mean$act_obs)
-    auc_mean <- performance(pred_mean, "auc")
-    message(unlist(auc_mean@y.values))
-
-    eval_perf <- list(eval_prof = eval_prof, eval_mean = eval_mean)
-    obj <- list(melissa_prof = scvb_prof, melissa_rate = scvb_mean,
-                eval_perf = eval_perf, opts = opts)
-    return(obj)
-}
-
-
 #' @title Independent model imputation analysis
 #'
 #'

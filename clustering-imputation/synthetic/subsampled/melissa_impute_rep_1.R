@@ -27,21 +27,21 @@ opts                  <- dt$opts
 opts$K                <- 3           # Number of clusters
 opts$N                <- length(dt$met) # Number of cells
 opts$M                <- length(dt$met[[1]]) # Number of genomic regions
-opts$delta_0          <- rep(2, opts$K) + rbeta(opts$K, 1e-1, 1e2)   # Dirichlet prior
+opts$delta_0          <- rep(3, opts$K) + rbeta(opts$K, 1e-1, 1e2)   # Dirichlet prior
 opts$alpha_0          <- .5          # Gamma prior
-opts$beta_0           <- NULL        # Gamma prior (if NULL beta_0 := alpha_0 + M*D/2)
+opts$beta_0           <- NULL        # Gamma prior (if NULL beta_0 := sqrt(alpha_0 + M*D/2))
 opts$filt_region_cov  <- 0.5         # Filter low covered genomic regions
 opts$data_train_prcg  <- 0.4         # % of data to keep fully for training
 opts$region_train_prcg <- 0.95       # % of regions kept for training
-opts$cpg_train_prcg   <- 0.5         # % of CpGs kept for training in each region
+opts$cpg_train_prcg   <- 0.2         # % of CpGs kept for training in each region
 opts$is_kmeans        <- TRUE        # Use K-means for initialization
-opts$vb_max_iter      <- 100         # Maximum VB iterations
+opts$vb_max_iter      <- 500         # Maximum VB iterations
 opts$epsilon_conv     <- 1e-4        # Convergence threshold for VB
-opts$vb_init_nstart   <- 4          # Mini VB restarts
+opts$vb_init_nstart   <- 10          # Mini VB restarts
 opts$vb_init_max_iter <- 20          # Mini VB iteratiions
 opts$is_parallel      <- TRUE        # Use parallelized version
-opts$no_cores         <- 6           # Number of cores
-opts$total_sims       <- 1          # Number of simulations
+opts$no_cores         <- 2           # Number of cores
+opts$total_sims       <- 10          # Number of simulations
 opts$basis_prof       <- create_rbf_object(M = 9) # Profile basis functions
 opts$basis_mean       <- create_rbf_object(M = 0) # Rate basis function
 
@@ -72,7 +72,7 @@ print(date())
 message("Storing results...")
 ##----------------------------------------------------------------------
 obj <- list(model = model, annos = annos, anno_region = anno_region, io = io, opts = opts)
-saveRDS(obj, file = paste0(io$out_dir, "test_melissa_sim", opts$total_sims,
+saveRDS(obj, file = paste0(io$out_dir, "melissa_sim", opts$total_sims,
                            "_", io$data_file,
                            "_cov", io$cov,
                            "_sd", io$sd,
