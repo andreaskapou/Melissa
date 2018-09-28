@@ -27,7 +27,7 @@ opts                  <- dt$opts
 opts$K                <- 3           # Number of clusters
 opts$N                <- length(dt$met) # Number of cells
 opts$M                <- length(dt$met[[1]]) # Number of genomic regions
-opts$delta_0          <- rep(3, opts$K) # Dirichlet prior
+opts$delta_0          <- rep(2, opts$K) + rbeta(opts$K, 1e-1, 1e2)   # Dirichlet prior
 opts$alpha_0          <- .5          # Gamma prior
 opts$beta_0           <- NULL        # Gamma prior (if NULL beta_0 := alpha_0 + M*D/2)
 opts$filt_region_cov  <- 0.5         # Filter low covered genomic regions
@@ -72,7 +72,7 @@ print(date())
 message("Storing results...")
 ##----------------------------------------------------------------------
 obj <- list(model = model, annos = annos, anno_region = anno_region, io = io, opts = opts)
-saveRDS(obj, file = paste0(io$out_dir, "melissa_sim", opts$total_sims,
+saveRDS(obj, file = paste0(io$out_dir, "test_melissa_sim", opts$total_sims,
                            "_", io$data_file,
                            "_cov", io$cov,
                            "_sd", io$sd,
