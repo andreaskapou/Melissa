@@ -9,7 +9,7 @@ suppressPackageStartupMessages(library(matrixcalc))
 suppressPackageStartupMessages(library(ROCR))
 suppressPackageStartupMessages(library(parallel))
 suppressPackageStartupMessages(require(Matrix))
-set.seed(123)
+##set.seed(123)
 
 ##------------------------------------
 # Load preprocessed data
@@ -27,9 +27,9 @@ opts                  <- dt$opts
 opts$K                <- 3           # Number of clusters
 opts$N                <- length(dt$met) # Number of cells
 opts$M                <- length(dt$met[[1]]) # Number of genomic regions
-opts$delta_0          <- rep(1, opts$K)   # Dirichlet prior
+opts$delta_0          <- rep(3, opts$K) #+ rbeta(opts$K, 1e-1, 1e2)   # Dirichlet prior
 opts$alpha_0          <- .5          # Gamma prior
-opts$beta_0           <- 2        # Gamma prior
+opts$beta_0           <- NULL        # Gamma prior
 opts$filt_region_cov  <- 0.5         # Filter low covered genomic regions
 opts$data_train_prcg  <- 0.4         # % of data to keep fully for training
 opts$region_train_prcg <- 0.95       # % of regions kept for training
@@ -37,8 +37,8 @@ opts$cpg_train_prcg   <- 0.5         # % of CpGs kept for training in each regio
 opts$is_kmeans        <- TRUE        # Use K-means for initialization
 opts$vb_max_iter      <- 500         # Maximum VB iterations
 opts$epsilon_conv     <- 1e-4        # Convergence threshold for VB
-opts$vb_init_nstart   <- 1          # Mini VB restarts
-opts$vb_init_max_iter <- 3          # Mini VB iteratiions
+opts$vb_init_nstart   <- 2          # Mini VB restarts
+opts$vb_init_max_iter <- 6          # Mini VB iteratiions
 opts$is_parallel      <- TRUE        # Use parallelized version
 opts$no_cores         <- 2           # Number of cores
 opts$total_sims       <- 1          # Number of simulations

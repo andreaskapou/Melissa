@@ -24,7 +24,7 @@ suppressPackageStartupMessages(library(ROCR))
 suppressPackageStartupMessages(library(scales))
 suppressPackageStartupMessages(library(data.table))
 suppressPackageStartupMessages(library(ggfortify))
-suppressPackageStartupMessages(library(stringi))
+#suppressPackageStartupMessages(library(stringi))
 suppressPackageStartupMessages(library(proxy))
 suppressPackageStartupMessages(library(RColorBrewer))
 ```
@@ -70,8 +70,8 @@ for (cpg_prcg in io$cpg_prcg) {
    # Load joint analysis results
    dt_melissa <- readRDS(paste0(io$data_dir, "melissa_sim10_", io$regions, 
                               "_cov", io$cov, "_sd0.05_K", io$K, "_M", io$M, 
-                              "_basis", 13, "_dataPrcg", io$data_prcg, 
-                              "_regionPrcg", io$reg_prcg, "_cpgPrcg", 0.5,
+                              "_basis", io$basis, "_dataPrcg", io$data_prcg, 
+                              "_regionPrcg", io$reg_prcg, "_cpgPrcg", cpg_prcg,
                               "_filter", io$filter, ".rds"))
    
    # Load independent analysis results
