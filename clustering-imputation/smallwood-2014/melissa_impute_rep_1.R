@@ -42,7 +42,7 @@ opts$vb_init_max_iter <- 20          # Mini VB iteratiions
 opts$is_parallel      <- TRUE        # Use parallelized version
 opts$no_cores         <- 2           # Number of cores
 opts$total_sims       <- 10          # Number of simulations
-opts$basis_prof       <- create_rbf_object(M = 11) # Profile basis functions
+opts$basis_prof       <- create_rbf_object(M = 7) # Profile basis functions
 opts$basis_mean       <- create_rbf_object(M = 0) # Rate basis function
 
 ##----------------------------------------------
