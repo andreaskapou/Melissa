@@ -403,7 +403,7 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
         ##-------------------------------
         # For efficiency we compute it every 10 iterations and surely on the maximum iteration threshold
         # TODO: Find a better way to not obtain Inf in the pnorm function
-        if (i %% 10 == 0 | i == vb_max_iter) {
+        #if (i %% 10 == 0 | i == vb_max_iter) {
             mk_Sk <- lapply(X = 1:M, FUN = function(m) lapply(X = 1:K,
                     FUN = function(k) tcrossprod(m_k[m, , k]) + S_k[[k]][[m]]))
             if (is_parallel) {
@@ -451,13 +451,13 @@ melissa_vb_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
                     cat("\r","It:\t",i,"\tLB:\t",LB[iter],"\tDiff:\t",LB[iter] - LB[iter - 1],"\n")
                 }
             }
-        }
-            # tmp <- c(rep(0, K))
-            # for (k in 1:K) { tmp[k] <- length(which(r_nk[,k] > 0.8)) }
-            # print(colSums(r_nk))
-            # print(tmp)
-            # print(beta_k)
-            # print(LB[iter])
+        #}
+            tmp <- c(rep(0, K))
+            for (k in 1:K) { tmp[k] <- length(which(r_nk[,k] > 0.8)) }
+            print(colSums(r_nk))
+            print(tmp)
+            print(beta_k)
+            print(LB[iter])
         # Check if VB converged in the given maximum iterations
         if (i == vb_max_iter) {warning("VB did not converge!\n")}
         if (is_verbose) { utils::setTxtProgressBar(pb, i) }
