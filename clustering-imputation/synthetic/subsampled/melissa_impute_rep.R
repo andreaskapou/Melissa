@@ -72,7 +72,7 @@ print(date())
 message("Storing results...")
 ##----------------------------------------------------------------------
 obj <- list(model = model, annos = annos, anno_region = anno_region, io = io, opts = opts)
-saveRDS(obj, file = paste0(io$out_dir, "diffuse_melissa_sim", opts$total_sims,
+saveRDS(obj, file = paste0(io$out_dir, "melissa_sim", opts$total_sims,
                            "_", io$data_file,
                            "_cov", io$cov,
                            "_sd", io$sd,
