@@ -205,8 +205,8 @@ auc_jitter_plot <- function(dt, title = "", x_lab = "", y_lab = ""){
                     se = TRUE, size = 1.3, alpha = 0.1) +
         #scale_color_manual(values = c("red3", "cornflowerblue", "chocolate2", "green4", "dodgerblue4")) +
         #scale_fill_manual(values = c("red3", "cornflowerblue", "chocolate2", "green4", "dodgerblue4")) +
-        scale_color_manual(values = c("red3", "chocolate2", "dodgerblue4", "mediumorchid4", "mistyrose4")) +
-        scale_fill_manual(values = c("red3", "chocolate2", "dodgerblue4", "mediumorchid4", "mistyrose4")) +
+        scale_color_manual(values = c("red3", "chocolate2", "dodgerblue4", "mediumorchid4", "mistyrose4", "darkgreen")) +
+        scale_fill_manual(values = c("red3", "chocolate2", "dodgerblue4", "mediumorchid4", "mistyrose4", "darkgreen")) +
         labs(title = title, x = x_lab, y = y_lab) + line_theme_synth()
     return(p)
 }
