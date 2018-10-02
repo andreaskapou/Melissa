@@ -41,7 +41,8 @@ io$K          <- 5
 io$M          <- c(2401, 2568, 4234, 2155, 760, 539)
 io$M_deepcpg  <- c(2029, 2155, 3563, 1801, 620, 436)
 io$cov        <- c(10, 15, 20, 10, 10, 10)
-io$basis      <- c(9, 11, 13, 9, 9, 11)
+#io$basis      <- c(9, 11, 13, 9, 9, 11)
+io$basis      <- c(11, 13, 15, 11, 9, 13)
 io$data_prcg  <- 0.4
 io$reg_prcg   <- 0.95
 io$cpg_prcg   <- 0.5
@@ -73,10 +74,10 @@ iter <- 1
 for (region in io$regions) {
    # Load joint analysis results
    dt_melissa <- readRDS(paste0(io$data_dir, "diffuse_melissa_sim10_", region, 
-                              "_cov", io$cov[iter], "_sd0.2_K", io$K, "_M", io$M[iter], 
-                              "_basis", io$basis[iter], "_dataPrcg", io$data_prcg, 
-                              "_regionPrcg", io$reg_prcg, "_cpgPrcg", io$cpg_prcg,
-                              "_filter", io$filter, ".rds"))
+                          "_cov", io$cov[iter], "_sd0.2_K", io$K, "_M", io$M[iter], 
+                          "_basis", io$basis[iter], "_dataPrcg", io$data_prcg, 
+                          "_regionPrcg", io$reg_prcg, "_cpgPrcg", io$cpg_prcg,
+                          "_filter", io$filter, ".rds"))
    
    # Load independent analysis results
    dt_indep <- readRDS(paste0(io$data_dir, "indep_sim10_", region,
@@ -180,11 +181,12 @@ rm(iter, dt, i, dt_rf, dt_indep, dt_melissa, melissa_pred, melissa_rate_pred, in
 ```
 
 
-# AUC performance 
+# AUC performance
+For visualisation purposes, we add a small jitter (Gaussian noise) on the output plots so the boxplot colours are clear. This does not change the overall trend and performance of each method.
 ```{r auc_plot_cpg, fig.wide=TRUE, echo=FALSE, message=FALSE, include=TRUE, warning=FALSE, fig.width=15.5, fig.height=10}
 set.seed(17)
 dt_boxplot <- copy(dt_analysis)
-s2 <- 0.005
+s2 <- 0.004
 
 dt_boxplot <- dt_boxplot[, c("auc_melissa", "auc_melissa_rate", "auc_indep_prof", "auc_indep_rate", "auc_rf", "auc_deepcpg", "auc_deepcpg_sub") := 
                              list(auc_melissa + rnorm(.N, 0, s2), auc_melissa_rate + rnorm(.N, 0, s2),
@@ -192,7 +194,7 @@ dt_boxplot <- dt_boxplot[, c("auc_melissa", "auc_melissa_rate", "auc_indep_prof"
                                   auc_rf + rnorm(.N, 0, s2), auc_deepcpg + rnorm(.N, 0, s2), auc_deepcpg_sub + rnorm(.N, 0, s2))]
 dt_boxplot <- dt_boxplot[, c("region", "auc_melissa", "auc_melissa_rate", "auc_indep_prof", "auc_indep_rate", "auc_rf", "auc_deepcpg", "auc_deepcpg_sub")]
 
-dt_boxplot <- dt_boxplot %>% setnames(c("region", "auc_melissa", "auc_melissa_rate", "auc_indep_prof", "auc_indep_rate", "auc_rf", "auc_deepcpg", "auc_deepcpg_sub"), c("x", "Melissa", "Melissa Rate", "Indep Profile", "Indep Rate", "RF", "DeepCpG", "DeepCpG Sub")) %>% .[, x := as.factor(x)] %>% melt(variable.name = "Model", value.name = "y")  %>% .[, x := factor(x, levels = c("prom10k", "prom5k", "prom3k", "Nanog", "super_enhancers", "active_enhancers"))] %>% .[, Model := factor(Model, levels = c("Melissa", "DeepCpG", "DeepCpG Sub", "Indep Profile", "RF", "Melissa Rate", "Indep Rate"))]
+dt_boxplot <- dt_boxplot %>% setnames(c("region", "auc_melissa", "auc_melissa_rate", "auc_indep_prof", "auc_indep_rate", "auc_rf", "auc_deepcpg", "auc_deepcpg_sub"), c("x", "Melissa", "Melissa Rate", "BPRMeth", "Rate", "RF", "DeepCpG", "DeepCpG Sub")) %>% .[, x := as.factor(x)] %>% melt(variable.name = "Model", value.name = "y")  %>% .[, x := factor(x, levels = c("prom10k", "prom5k", "prom3k", "Nanog", "super_enhancers", "active_enhancers"))] %>% .[, Model := factor(Model, levels = c("Melissa", "DeepCpG", "DeepCpG Sub", "BPRMeth", "RF", "Melissa Rate", "Rate"))]
 
 p_auc_box <- ggplot(dt_boxplot, aes(x = x, y = y, fill = Model)) +
   geom_boxplot(alpha = 0.8, outlier.shape = NA) +
@@ -218,7 +220,7 @@ rm(dt_boxplot, s2)
 ```{r f1_plot, fig.wide=TRUE, echo=FALSE, message=FALSE, include=TRUE, warning=FALSE, fig.width=15.5, fig.height=10}
 set.seed(17)
 dt_boxplot <- copy(dt_analysis)
-s2 <- 0.005
+s2 <- 0.004
 
 dt_boxplot <- dt_boxplot[, c("f_melissa", "f_melissa_rate", "f_indep_prof", "f_indep_rate", "f_rf", "f_deepcpg", "f_deepcpg_sub") := 
                              list(f_melissa + rnorm(.N, 0, s2), f_melissa_rate + rnorm(.N, 0, s2),
@@ -226,8 +228,8 @@ dt_boxplot <- dt_boxplot[, c("f_melissa", "f_melissa_rate", "f_indep_prof", "f_i
                                   f_rf + rnorm(.N, 0, s2), f_deepcpg + rnorm(.N, 0, s2), f_deepcpg_sub + rnorm(.N, 0, s2))]
 dt_boxplot <- dt_boxplot[, c("region", "f_melissa", "f_melissa_rate", "f_indep_prof", "f_indep_rate", "f_rf", "f_deepcpg", "f_deepcpg_sub")]
 
-dt_boxplot <- dt_boxplot %>% setnames(c("region", "f_melissa", "f_melissa_rate", "f_indep_prof", "f_indep_rate", "f_rf", "f_deepcpg", "f_deepcpg_sub"), c("x", "Melissa", "Melissa Rate", "Indep Profile", "Indep Rate", "RF", "DeepCpG", "DeepCpG Sub")) %>% .[, x := as.factor(x)] %>% melt(variable.name = "Model", value.name = "y")  %>% .[, x := factor(x, levels = c("prom10k", "prom5k", "prom3k", "Nanog", "super_enhancers", "active_enhancers"))] %>% 
-    .[, Model := factor(Model, levels = c("Melissa", "DeepCpG", "DeepCpG Sub", "Indep Profile", "RF", "Melissa Rate", "Indep Rate"))]
+dt_boxplot <- dt_boxplot %>% setnames(c("region", "f_melissa", "f_melissa_rate", "f_indep_prof", "f_indep_rate", "f_rf", "f_deepcpg", "f_deepcpg_sub"), c("x", "Melissa", "Melissa Rate",  "BPRMeth", "Rate", "RF", "DeepCpG", "DeepCpG Sub")) %>% .[, x := as.factor(x)] %>% melt(variable.name = "Model", value.name = "y")  %>% .[, x := factor(x, levels = c("prom10k", "prom5k", "prom3k", "Nanog", "super_enhancers", "active_enhancers"))] %>% 
+    .[, Model := factor(Model, levels = c("Melissa", "DeepCpG", "DeepCpG Sub", "BPRMeth", "RF", "Melissa Rate", "Rate"))]
 
 p_f_box <- ggplot(dt_boxplot, aes(x = x, y = y, fill = Model)) +
   geom_boxplot(alpha = 0.8, outlier.shape = NA) +
@@ -259,7 +261,7 @@ rows <- c(4, 16, 25, 40, 44, 54)
 dt_boxplot <- dt_boxplot[rows, ]
 
 # Change Model and Region names
-colnames(dt_boxplot) <- c("Region", "Melissa", "Melissa Rate", "Indep Profile", "Indep Rate", "RF", "DeepCpG", "DeepCpG Sub")
+colnames(dt_boxplot) <- c("Region", "Melissa", "Melissa Rate",  "BPRMeth", "Rate", "RF", "DeepCpG", "DeepCpG Sub")
 model_names <- colnames(dt_boxplot)[2:NCOL(dt_boxplot)]
 region_names <- c("Promoter 3kb", "Promoter 5kb", "Promoter 10kb", "Active enhancers", "Nanog", "Super enhancers")
 dt_boxplot$Region <- region_names
@@ -276,8 +278,8 @@ for (i in 1:NROW(dt_boxplot)) {
 }
 
 # Rename and refactor
-dt_tpr_fpr <- dt_tpr_fpr %>% .[, c("Region", "Model") := list(as.factor(Region), as.factor(Model))] %>% .[, Region := factor(Region, levels = c("Promoter 10kb", "Promoter 5kb", "Promoter 3kb", "Nanog", "Super enhancers", "Active enhancers"))] %>% .[, Model := factor(Model, levels = c("Melissa", "Melissa Rate", "Indep Profile", "Indep Rate", "RF", "DeepCpG", "DeepCpG Sub"))] %>% 
-    .[, Model := factor(Model, levels = c("Melissa", "DeepCpG", "DeepCpG Sub", "Indep Profile", "RF", "Melissa Rate", "Indep Rate"))]
+dt_tpr_fpr <- dt_tpr_fpr %>% .[, c("Region", "Model") := list(as.factor(Region), as.factor(Model))] %>% .[, Region := factor(Region, levels = c("Promoter 10kb", "Promoter 5kb", "Promoter 3kb", "Nanog", "Super enhancers", "Active enhancers"))] %>% .[, Model := factor(Model, levels = c("Melissa", "Melissa Rate", "BPRMeth", "Rate", "RF", "DeepCpG", "DeepCpG Sub"))] %>% 
+    .[, Model := factor(Model, levels = c("Melissa", "DeepCpG", "DeepCpG Sub", "BPRMeth", "RF", "Melissa Rate", "Rate"))]
 
 
 p_tpr_fpr <- ggplot(dt_tpr_fpr, aes(x = fpr, y = tpr, group = Model)) +
@@ -309,7 +311,7 @@ rows <- c(4, 16, 25, 40, 44, 38)
 dt_boxplot <- dt_boxplot[rows, ]
 
 # Change Model and Region names
-colnames(dt_boxplot) <- c("Region", "Melissa", "Melissa Rate", "Indep Profile", "Indep Rate", "RF", "DeepCpG", "DeepCpG Sub")
+colnames(dt_boxplot) <- c("Region", "Melissa", "Melissa Rate", "BPRMeth", "Rate", "RF", "DeepCpG", "DeepCpG Sub")
 model_names <- colnames(dt_boxplot)[2:NCOL(dt_boxplot)]
 region_names <- c("Promoter 3kb", "Promoter 5kb", "Promoter 10kb", "Active enhancers", "Nanog", "Super enhancers")
 dt_boxplot$Region <- region_names
@@ -328,8 +330,7 @@ for (i in 1:NROW(dt_boxplot)) {
 }
 
 # Rename and refactor
-dt_pr <- dt_pr %>% .[, c("Region", "Model") := list(as.factor(Region), as.factor(Model))] %>% .[, Region := factor(Region, levels = c("Promoter 10kb", "Promoter 5kb", "Promoter 3kb", "Nanog", "Super enhancers", "Active enhancers"))] %>% .[, Model := factor(Model, levels = c("Melissa", "Melissa Rate", "Indep Profile", "Indep Rate", "RF", "DeepCpG", "DeepCpG Sub"))] %>% 
-    .[, Model := factor(Model, levels = c("Melissa", "DeepCpG", "DeepCpG Sub", "Indep Profile", "RF", "Melissa Rate", "Indep Rate"))]
+dt_pr <- dt_pr %>% .[, c("Region", "Model") := list(as.factor(Region), as.factor(Model))] %>% .[, Region := factor(Region, levels = c("Promoter 10kb", "Promoter 5kb", "Promoter 3kb", "Nanog", "Super enhancers", "Active enhancers"))] %>% .[, Model := factor(Model, levels = c("Melissa", "Melissa Rate", "BPRMeth", "Rate", "RF", "DeepCpG", "DeepCpG Sub"))] %>% .[, Model := factor(Model, levels = c("Melissa", "DeepCpG", "DeepCpG Sub", "BPRMeth", "RF", "Melissa Rate", "Rate"))]
 
 
 p_pr <- ggplot(dt_pr, aes(x = x, y = y, group = Model)) +
@@ -365,7 +366,7 @@ opts$M <- length(met[[1]])  # Number of genomic regions
 print(opts$M)
 
 # Load Melissa model
-melissa_obj <- readRDS(paste0(io$data_dir, "melissa_sim10_", context, 
+melissa_obj <- readRDS(paste0(io$data_dir, "diffuse_melissa_sim10_", context, 
                               "_cov", io$cov[iter], "_sd0.2_K", io$K, "_M", io$M[iter], 
                               "_basis", io$basis[iter], "_dataPrcg", io$data_prcg, 
                               "_regionPrcg", io$reg_prcg, "_cpgPrcg", io$cpg_prcg,
@@ -384,13 +385,18 @@ Order <- order(dists, decreasing = TRUE)
 
 ##-----------------------------------------
 # Create objects for plotting specific set of regions
-regions <- c(2, 6, 9)
+regions <- c(35, 10, 3)
+#regions <- seq(31, 40, 1)
 cluster_assinments <- unique(melissa$labels)
 region_melissa_obj <- list()
 for (t in 1:length(regions)) {
     r <- Order[regions[t]]
+    W_Sigma <- list()
+    for (cl in 1:length(cluster_assinments)) {
+        W_Sigma[[cl]] <- melissa$W_Sigma[[cluster_assinments[cl]]][[r]]
+    }
     region_melissa_obj[[t]] <- list(W = w_prof[r,,cluster_assinments], 
-                                    W_Sigma = melissa$W_Sigma[[r]][cluster_assinments],
+                                    W_Sigma = W_Sigma,  #melissa$W_Sigma[cluster_assinments][[r]],
                                     basis = melissa$basis)
     class(region_melissa_obj[[t]]) <- c("cluster_profiles_vb_bernoulli", "cluster_profiles_vb")
     p_prof <- plot_cluster_profiles(cluster_obj = region_melissa_obj[[t]], 
@@ -421,7 +427,7 @@ opts$M <- length(met[[1]])  # Number of genomic regions
 print(opts$M)
 
 # Load Melissa model
-melissa_obj <- readRDS(paste0(io$data_dir, "melissa_sim10_", context, 
+melissa_obj <- readRDS(paste0(io$data_dir, "diffuse_melissa_sim10_", context, 
                               "_cov", io$cov[iter], "_sd0.2_K", io$K, "_M", io$M[iter], 
                               "_basis", io$basis[iter], "_dataPrcg", io$data_prcg, 
                               "_regionPrcg", io$reg_prcg, "_cpgPrcg", io$cpg_prcg,
@@ -440,13 +446,18 @@ Order <- order(dists, decreasing = TRUE)
 
 ##-----------------------------------------
 # Create objects for plotting specific set of regions
-regions <- c(17, 18, 29)
+regions <- c(1, 16, 29)
+#regions <- seq(8, 21, 1)
 cluster_assinments <- unique(melissa$labels)
 region_melissa_obj <- list()
 for (t in 1:length(regions)) {
     r <- Order[regions[t]]
+    W_Sigma <- list()
+    for (cl in 1:length(cluster_assinments)) {
+        W_Sigma[[cl]] <- melissa$W_Sigma[[cluster_assinments[cl]]][[r]]
+    }
     region_melissa_obj[[t]] <- list(W = w_prof[r,,cluster_assinments], 
-                                    W_Sigma = melissa$W_Sigma[[r]][cluster_assinments],
+                                    W_Sigma = W_Sigma,  #melissa$W_Sigma[cluster_assinments][[r]],
                                     basis = melissa$basis)
     class(region_melissa_obj[[t]]) <- c("cluster_profiles_vb_bernoulli", "cluster_profiles_vb")
     p_prof <- plot_cluster_profiles(cluster_obj = region_melissa_obj[[t]], 

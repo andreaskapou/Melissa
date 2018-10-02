@@ -42,7 +42,8 @@ io$K          <- 6
 io$M          <- c(541, 1468, 2666, 745, 231, 384)
 io$M_deepcpg  <- c(435, 1182, 2113, 605, 183, 283)
 io$cov        <- c(10, 10, 15, 10, 10, 10)
-io$basis      <- c(7, 11, 9, 7, 7, 7)
+#io$basis      <- c(7, 11, 9, 7, 7, 7)
+io$basis      <- c(9, 11, 13, 11, 9, 11)
 io$cpg_prcg   <- 0.5
 io$data_prcg  <- 0.4
 io$reg_prcg   <- 0.95
@@ -73,7 +74,7 @@ model_analysis <- data.table(region = character(), melissa = numeric(), melissa_
 iter <- 1
 for (region in io$regions) {
    # Load joint analysis results
-   dt_melissa <- readRDS(paste0(io$data_dir, "melissa_sim10_", region, 
+   dt_melissa <- readRDS(paste0(io$data_dir, "diffuse_melissa_sim10_", region, 
                               "_cov", io$cov[iter], "_sd0.2_K", io$K, "_M", io$M[iter], 
                               "_basis", io$basis[iter], "_dataPrcg", io$data_prcg, 
                               "_regionPrcg", io$reg_prcg, "_cpgPrcg", io$cpg_prcg,
@@ -185,7 +186,7 @@ rm(iter, dt, i, dt_rf, dt_indep, dt_melissa, melissa_pred, melissa_rate_pred, in
 ```{r auc_plot_cpg, fig.wide=TRUE, echo=FALSE, include=TRUE, warning=FALSE, fig.width=15.5, fig.height=10}
 set.seed(17)
 dt_boxplot <- copy(dt_analysis)
-s2 <- 0.005
+s2 <- 0.004
 
 dt_boxplot <- dt_boxplot[, c("auc_melissa", "auc_melissa_rate", "auc_indep_prof", "auc_indep_rate", "auc_rf", "auc_deepcpg", "auc_deepcpg_sub") := 
                              list(auc_melissa + rnorm(.N, 0, s2), auc_melissa_rate + rnorm(.N, 0, s2),
@@ -361,7 +362,7 @@ opts$M <- length(met[[1]])  # Number of genomic regions
 print(opts$M)
 
 # Load Melissa model
-melissa_obj <- readRDS(paste0(io$data_dir, "melissa_sim10_", context, 
+melissa_obj <- readRDS(paste0(io$data_dir, "diffuse_melissa_sim10_", context, 
                               "_cov", io$cov[iter], "_sd0.2_K", io$K, "_M", io$M[iter], 
                               "_basis", io$basis[iter], "_dataPrcg", io$data_prcg, 
                               "_regionPrcg", io$reg_prcg, "_cpgPrcg", io$cpg_prcg,
@@ -380,13 +381,20 @@ Order <- order(dists, decreasing = TRUE)
 
 ##-----------------------------------------
 # Create objects for plotting specific set of regions
-regions <- c(20, 4, 30)
+#regions <- c(21, 152, 63)
+regions <- c(236, 131, 136)
+#regions <- seq(1, 20, 1)
+# regions <- c(20, 4, 30)
 cluster_assinments <- unique(melissa$labels)
 region_melissa_obj <- list()
 for (t in 1:length(regions)) {
     r <- Order[regions[t]]
+    W_Sigma <- list()
+    for (cl in 1:length(cluster_assinments)) {
+        W_Sigma[[cl]] <- melissa$W_Sigma[[cluster_assinments[cl]]][[r]]
+    }
     region_melissa_obj[[t]] <- list(W = w_prof[r,,cluster_assinments], 
-                                    W_Sigma = melissa$W_Sigma[[r]][cluster_assinments],
+                                    W_Sigma = W_Sigma,  #melissa$W_Sigma[cluster_assinments][[r]],
                                     basis = melissa$basis)
     class(region_melissa_obj[[t]]) <- c("cluster_profiles_vb_bernoulli", "cluster_profiles_vb")
     p_prof <- plot_cluster_profiles(cluster_obj = region_melissa_obj[[t]], 
@@ -417,7 +425,7 @@ final_fig
 dev.off()
 
 final_fig <- plot_grid(top_row, bottom_row, labels = c("", ""), label_size = 25, ncol = 1, nrow = 2, 
-                       rel_heights = c(2, 1), rel_widths = c(1, 1))
+                       rel_heights = c(2.5, 1), rel_widths = c(1, 1))
 print(final_fig)
 pdf(file = paste0("out/", io$dataset, io$sub_dir, "/mt-seq-auc.pdf"), width = 14.5, height = 12, useDingbats = FALSE)
 final_fig
