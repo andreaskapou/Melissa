@@ -10,7 +10,7 @@ suppressPackageStartupMessages(library(ROCR))
 ##------------------------------------
 # Load preprocessed data
 ##------------------------------------
-io <- list(dataset = "mt-seq", data_file = "active_enhancers", cov = 10, sd = 0.2)
+io <- list(dataset = "mt-seq", data_file = "super_enhancers", cov = 10, sd = 0.2)
 io$data_dir = "../../local-data/melissa/"
 io$out_dir = paste0(io$data_dir, io$dataset, "/imputation/")
 dt <- readRDS(paste0(io$data_dir, "met/filtered_met/", io$dataset, "/", io$data_file, "_cov",

@@ -12,7 +12,7 @@ set.seed(123)
 ##------------------------------------
 # Load preprocessed data
 ##------------------------------------
-io <- list(dataset = "smallwood-2014", data_file = "active_enhancers", cov = 10, sd = 0.2)
+io <- list(dataset = "smallwood-2014", data_file = "prom3k", cov = 10, sd = 0.2)
 io$data_dir = "../../local-data/melissa/"
 io$out_dir = paste0(io$data_dir, io$dataset, "/imputation/")
 dt <- readRDS(paste0(io$data_dir, "met/filtered_met/", io$dataset, "/", io$data_file,
@@ -29,7 +29,7 @@ opts$data_train_prcg  <- 0.4         # % of data to keep fully for training
 opts$region_train_prcg <- 0.95       # % of regions kept for training
 opts$cpg_train_prcg   <- 0.5         # % of CpGs kept for training in each region
 opts$is_parallel      <- TRUE        # Use parallelized version
-opts$no_cores         <- 6           # Number of cores
+opts$no_cores         <- 5           # Number of cores
 opts$total_sims       <- 10          # Number of simulations
 opts$basis_prof       <- create_rbf_object(M = 11) # Profile basis functions
 opts$basis_mean       <- create_rbf_object(M = 0) # Rate basis function
