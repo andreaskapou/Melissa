@@ -1,0 +1,524 @@
+---
+  title: "Melissa - Simulation study"
+author:
+  - name: Andreas C. Kapourani
+affiliation: School of Informatics, University of Edinburgh, UK
+email: c.a.kapourani or kapouranis.andreas@gmail.com
+- name: Guido Sanguinetti
+affiliation: School of Informatics, University of Edinburgh, UK
+email: G.Sanguinetti@ed.ac.uk
+output:
+  BiocStyle::html_document:
+  toc_float: true
+---
+
+```{r echo=FALSE, include=FALSE}
+suppressPackageStartupMessages(library(BPRMeth))
+suppressPackageStartupMessages(library(purrr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(cowplot))
+suppressPackageStartupMessages(library(gridExtra))
+suppressPackageStartupMessages(library(reshape2))
+suppressPackageStartupMessages(library(grid))
+suppressPackageStartupMessages(library(ROCR))
+suppressPackageStartupMessages(library(scales))
+suppressPackageStartupMessages(library(data.table))
+suppressPackageStartupMessages(library(RColorBrewer))
+```
+
+<!-- # Parse and filter data -->
+```{r initial_params, echo=FALSE, include=FALSE}
+# Data
+io <- list()
+io$script_dir <- "../"
+io$data_dir   <- "../local-data/melissa/synthetic/imputation/"
+io$cpg_dir    <- paste0(io$data_dir, "coverage/")
+io$var_dir    <- paste0(io$data_dir, "dissimilarity/")
+io$cell_dir    <- paste0(io$data_dir, "cells/")
+io$K          <- 4
+io$basis      <- 4
+io$cpg_prcg   <- 0.4
+io$cl_var     <- 0.5
+io$data_prcg  <- 0.1
+io$reg_prcg   <- 1
+R.utils::sourceDirectory(paste0(io$script_dir, "lib/"), modifiedOnly = FALSE)
+```
+
+
+<!-- # Parse and filter data for Coverage analysis-->
+```{r load_cpg_data, echo=FALSE, include=FALSE, warning=FALSE, message=FALSE}
+# Different CpG coverages
+io$cpg_analysis <- seq(0.1, 0.9, 0.1)
+# Load synthetic data
+cpg_data <- readRDS(paste0(io$cpg_dir, "raw/encode_data.rds"))
+# Load joint analysis results
+dt_melissa_cpg_prcg <- readRDS(paste0(io$cpg_dir, "encode_melissa_K", io$K, "_rbf", io$basis,
+                                      "_dataTrain", io$data_prcg,
+                                      "_regionTrain", io$reg_prcg,
+                                      "_clusterVar", io$cl_var, ".rds"))
+
+# Load independent analysis results
+indep_cpg_prcg <- readRDS(paste0(io$cpg_dir, "encode_indep_K", io$K, "_rbf", io$basis,
+                                 "_dataTrain", io$data_prcg,
+                                 "_regionTrain", io$reg_prcg,
+                                 "_clusterVar", io$cl_var, ".rds"))
+
+# Load RF analysis results
+rf_cpg_prcg <- readRDS(paste0(io$cpg_dir, "encode_rf_indep_K", io$K, "_rbf", io$basis,
+                              "_dataTrain", io$data_prcg,
+                              "_regionTrain", io$reg_prcg,
+                              "_clusterVar", io$cl_var, ".rds"))
+
+# Load RF analysis results
+gmm_cpg_prcg <- readRDS(paste0(io$cpg_dir, "encode_gmm_K", io$K,
+                               "_dataTrain", io$data_prcg,
+                               "_regionTrain", io$reg_prcg,
+                               "_clusterVar", io$cl_var, ".rds"))
+
+# Load RF analysis results
+pca_gmm_cpg_prcg <- readRDS(paste0(io$cpg_dir, "encode_pca_gmm_K", io$K,
+                               "_dataTrain", io$data_prcg,
+                               "_regionTrain", io$reg_prcg,
+                               "_clusterVar", io$cl_var, ".rds"))
+
+N <- length(dt_melissa_cpg_prcg)    # Numer of replications
+M <- length(io$cpg_analysis)  # Number of Cpg coverage thresholds
+
+dt_cpg_analysis <- data.table(cpg_cov = numeric(), melissa_ari = numeric(), melissa_rate_ari = numeric(), 
+                              gmm_ari = numeric(), pca_gmm_ari = numeric(),
+                              melissa_error = numeric(), melissa_rate_error = numeric(), 
+                              gmm_error = numeric(), pca_gmm_error = numeric())
+
+
+# Iterate over each replication of the experiment
+for (i in 1:length(dt_melissa_cpg_prcg)) {     # Itrate over simulations
+  for (m in 1:length(io$cpg_analysis)) {  # Iterate over CpG percentages
+    dt <- data.table(cpg_cov = io$cpg_analysis[m],
+                     melissa_ari = cluster_ari(cpg_data$synth_data[[i]]$C_true, dt_melissa_cpg_prcg[[i]]$melissa_prof[[m]]$r_nk),
+                     melissa_rate_ari = cluster_ari(cpg_data$synth_data[[i]]$C_true, dt_melissa_cpg_prcg[[i]]$melissa_rate[[m]]$r_nk),
+                     gmm_ari = cluster_ari(cpg_data$synth_data[[i]]$C_true, gmm_cpg_prcg[[i]]$gmm[[m]]$r_nk),
+                     pca_gmm_ari = cluster_ari(cpg_data$synth_data[[i]]$C_true, pca_gmm_cpg_prcg[[i]]$gmm[[m]]$r_nk),
+                     melissa_error = cluster_error(cpg_data$synth_data[[i]]$C_true, dt_melissa_cpg_prcg[[i]]$melissa_prof[[m]]$r_nk),
+                     melissa_rate_error = cluster_error(cpg_data$synth_data[[i]]$C_true, dt_melissa_cpg_prcg[[i]]$melissa_rate[[m]]$r_nk),
+                     gmm_error = cluster_error(cpg_data$synth_data[[i]]$C_true, gmm_cpg_prcg[[i]]$gmm[[m]]$r_nk),
+                     pca_gmm_error = cluster_error(cpg_data$synth_data[[i]]$C_true, pca_gmm_cpg_prcg[[i]]$gmm[[m]]$r_nk)
+    )
+    # Add results to final data.table
+    dt_cpg_analysis <- rbind(dt_cpg_analysis, dt)
+  }
+}
+rm(iter, dt, i, m, N, M, dt_melissa_cpg_prcg, indep_cpg_prcg, cpg_data, gmm_cpg_prcg, rf_cpg_prcg)
+```
+
+
+
+
+<!-- # Parse and filter data. Cluster dissimilarity analysis-->
+```{r load_diss_data, echo=FALSE, include=FALSE, warning=FALSE, message=FALSE}
+# Different cluster dissimilarity values
+io$cluster_var_analysis <- seq(0, 1, .1)
+# Load joint analysis results
+dt_melissa_cl_var <- readRDS(paste0(io$var_dir, "encode_melissa_K", io$K, "_rbf", io$basis,
+                                    "_dataTrain", io$data_prcg,
+                                    "_regionTrain", io$reg_prcg,
+                                    "_cpgTrain", io$cpg_prcg, ".rds"))
+# Load independent analysis results
+indep_cl_var <- readRDS(paste0(io$var_dir, "encode_indep_K", io$K, "_rbf", io$basis,
+                               "_dataTrain", io$data_prcg,
+                               "_regionTrain", io$reg_prcg,
+                               "_cpgTrain", io$cpg_prcg, ".rds"))
+# Load RF analysis results
+rf_cl_var <- readRDS(paste0(io$var_dir, "encode_rf_indep_K", io$K, "_rbf", io$basis,
+                            "_dataTrain", io$data_prcg,
+                            "_regionTrain", io$reg_prcg,
+                            "_cpgTrain", io$cpg_prcg, ".rds"))
+
+# Load RF analysis results
+gmm_cl_var <- readRDS(paste0(io$var_dir, "encode_gmm_K", io$K,
+                             "_dataTrain", io$data_prcg,
+                             "_regionTrain", io$reg_prcg,
+                             "_cpgTrain", io$cpg_prcg, ".rds"))
+
+N <- length(dt_melissa_cl_var)             # Numer of replications
+M <- length(io$cluster_var_analysis)  # Number of cell variability thresholds
+dt_var_analysis <- data.table(cell_var = numeric(), auc_melissa = numeric(),
+                              auc_melissa_rate = numeric(), auc_indep_prof = numeric(),
+                              auc_indep_rate = numeric(), auc_rf = numeric(), auc_gmm = numeric(),
+                              f_melissa = numeric(),
+                              f_melissa_rate = numeric(), f_indep_prof = numeric(),
+                              f_indep_rate = numeric(), f_rf = numeric(), f_gmm = numeric(),
+                              melissa_ari = numeric(), melissa_rate_ari = numeric(), gmm_ari = numeric(),
+                              melissa_error = numeric(), melissa_rate_error = numeric(), gmm_error = numeric())
+# Iterate over each replication of the experiment
+for (i in 1:length(dt_melissa_cl_var)) {
+  for (m in 1:length(io$cluster_var_analysis)) {
+    # Load synthetic data
+    var_data <- readRDS(paste0(io$var_dir, "raw/data-sims/encode_data_", io$cluster_var_analysis[m], "_", i, ".rds"))
+
+    # Create prediction objects
+    melissa_pred <- prediction(dt_melissa_cl_var[[i]]$eval_perf[[m]]$eval_prof$pred_obs,
+                               dt_melissa_cl_var[[i]]$eval_perf[[m]]$eval_prof$act_obs)
+    melissa_rate_pred <- prediction(dt_melissa_cl_var[[i]]$eval_perf[[m]]$eval_mean$pred_obs,
+                                    dt_melissa_cl_var[[i]]$eval_perf[[m]]$eval_mean$act_obs)
+    indep_prof_pred <- prediction(indep_cl_var[[i]]$eval_perf[[m]]$eval_prof$pred_obs,
+                                  indep_cl_var[[i]]$eval_perf[[m]]$eval_prof$act_obs)
+    indep_rate_pred <- prediction(indep_cl_var[[i]]$eval_perf[[m]]$eval_mean$pred_obs,
+                                  indep_cl_var[[i]]$eval_perf[[m]]$eval_mean$act_obs)
+    rf_pred <- prediction(rf_cl_var[[i]]$eval_perf[[m]]$pred_obs,
+                          rf_cl_var[[i]]$eval_perf[[m]]$act_obs)
+    gmm_pred <- prediction(gmm_cl_var[[i]]$eval_perf[[m]]$pred_obs,
+                           gmm_cl_var[[i]]$eval_perf[[m]]$act_obs)
+
+    # F-measure performance
+    f_melissa <- performance(melissa_pred, "f")
+    f_melissa_rate <- performance(melissa_rate_pred, "f")
+    f_indep_prof <- performance(indep_prof_pred, "f")
+    f_indep_rate <- performance(indep_rate_pred, "f")
+    f_rf <- performance(rf_pred, "f")
+    f_gmm <- performance(gmm_pred, "f")
+
+    dt <- data.table(cell_var = io$cluster_var_analysis[m],
+                     auc_melissa = performance(melissa_pred, "auc")@y.values[[1]],
+                     auc_melissa_rate = performance(melissa_rate_pred, "auc")@y.values[[1]],
+                     auc_indep_prof = performance(indep_prof_pred, "auc")@y.values[[1]],
+                     auc_indep_rate = performance(indep_rate_pred, "auc")@y.values[[1]],
+                     auc_rf = performance(rf_pred, "auc")@y.values[[1]],
+                     auc_gmm = performance(gmm_pred, "auc")@y.values[[1]],
+
+                     f_melissa = f_melissa@y.values[[1]][min(which(f_melissa@x.values[[1]] <= 0.5))],
+                     f_melissa_rate = f_melissa_rate@y.values[[1]][min(which(f_melissa_rate@x.values[[1]] <= 0.5))],
+                     f_indep_prof = f_indep_prof@y.values[[1]][min(which(f_indep_prof@x.values[[1]] <= 0.5))],
+                     f_indep_rate = f_indep_rate@y.values[[1]][min(which(f_indep_rate@x.values[[1]] <= 0.5))],
+                     f_rf = f_rf@y.values[[1]][min(which(f_rf@x.values[[1]] <= 0.5))],
+                     f_gmm = f_gmm@y.values[[1]][min(which(f_gmm@x.values[[1]] <= 0.5))],
+
+                     melissa_ari = cluster_ari(var_data$synth_data$C_true, dt_melissa_cl_var[[i]]$melissa_prof[[m]]$r_nk),
+                     melissa_rate_ari = cluster_ari(var_data$synth_data$C_true, dt_melissa_cl_var[[i]]$melissa_rate[[m]]$r_nk),
+                     gmm_ari = cluster_ari(var_data$synth_data$C_true, gmm_cl_var[[i]]$gmm[[m]]$r_nk),
+                     melissa_error = cluster_error(var_data$synth_data$C_true, dt_melissa_cl_var[[i]]$melissa_prof[[m]]$r_nk),
+                     melissa_rate_error = cluster_error(var_data$synth_data$C_true, dt_melissa_cl_var[[i]]$melissa_rate[[m]]$r_nk),
+                     gmm_error = cluster_error(var_data$synth_data$C_true, gmm_cl_var[[i]]$gmm[[m]]$r_nk)
+    )
+    # Add results to final data.table
+    dt_var_analysis <- rbind(dt_var_analysis, dt)
+  }
+}
+rm(iter, i, m, N, M, dt_melissa_cl_var, indep_cl_var, dt, var_data, gmm_cl_var, rf_cl_var)
+```
+
+
+<!-- # Parse and filter data. Cells assayed analysis-->
+```{r load_cell_assay_data, echo=FALSE, include=FALSE, warning=FALSE, message=FALSE}
+# Different cluster dissimilarity values
+io$cells_analysis <- c(25, 50, 75, 100, 125, 150, 175, 200, 225, 250)
+io$cpg_prcg <- 0.4
+# Load joint analysis results
+dt_melissa_cells <- readRDS(paste0(io$cell_dir, "encode_melissa_K", io$K, "_rbf", io$basis,
+                                   "_dataTrain", io$data_prcg,
+                                   "_regionTrain", io$reg_prcg,
+                                   "_cpgTrain", io$cpg_prcg, ".rds"))
+# Load independent analysis results
+indep_cells <- readRDS(paste0(io$cell_dir, "encode_indep_K", io$K, "_rbf", io$basis,
+                              "_dataTrain", io$data_prcg,
+                              "_regionTrain", io$reg_prcg,
+                              "_cpgTrain", io$cpg_prcg, ".rds"))
+# Load RF analysis results
+rf_cells <- readRDS(paste0(io$cell_dir, "encode_rf_indep_K", io$K, "_rbf", io$basis,
+                           "_dataTrain", io$data_prcg,
+                           "_regionTrain", io$reg_prcg,
+                           "_cpgTrain", io$cpg_prcg, ".rds"))
+
+# Load RF analysis results
+gmm_cells <- readRDS(paste0(io$cell_dir, "encode_gmm_K", io$K,
+                            "_dataTrain", io$data_prcg,
+                            "_regionTrain", io$reg_prcg,
+                            "_cpgTrain", io$cpg_prcg, ".rds"))
+
+N <- length(dt_melissa_cells)             # Numer of replications
+M <- length(io$cells_analysis)  # Number of cell variability thresholds
+dt_cell_analysis <- data.table(cells = numeric(), auc_melissa = numeric(),
+                               auc_melissa_rate = numeric(), auc_indep_prof = numeric(),
+                               auc_indep_rate = numeric(), auc_rf = numeric(), auc_gmm = numeric(),
+                               f_melissa = numeric(),
+                               f_melissa_rate = numeric(), f_indep_prof = numeric(),
+                               f_indep_rate = numeric(), f_rf = numeric(), f_gmm = numeric(),
+                               melissa_ari = numeric(), melissa_rate_ari = numeric(), gmm_ari = numeric(),
+                               melissa_error = numeric(), melissa_rate_error = numeric(), gmm_error = numeric())
+# Iterate over each replication of the experiment
+for (i in 1:length(dt_melissa_cells)) {
+  for (m in 1:length(io$cells_analysis)) {
+    # Load synthetic data
+    cell_data <- readRDS(paste0(io$cell_dir, "raw/data-sims/encode_data_", io$cells_analysis[m], "_", i, ".rds"))
+
+    # Create prediction objects
+    melissa_pred <- prediction(dt_melissa_cells[[i]]$eval_perf[[m]]$eval_prof$pred_obs,
+                               dt_melissa_cells[[i]]$eval_perf[[m]]$eval_prof$act_obs)
+    melissa_rate_pred <- prediction(dt_melissa_cells[[i]]$eval_perf[[m]]$eval_mean$pred_obs,
+                                    dt_melissa_cells[[i]]$eval_perf[[m]]$eval_mean$act_obs)
+    indep_prof_pred <- prediction(indep_cells[[i]]$eval_perf[[m]]$eval_prof$pred_obs,
+                                  indep_cells[[i]]$eval_perf[[m]]$eval_prof$act_obs)
+    indep_rate_pred <- prediction(indep_cells[[i]]$eval_perf[[m]]$eval_mean$pred_obs,
+                                  indep_cells[[i]]$eval_perf[[m]]$eval_mean$act_obs)
+    rf_pred <- prediction(rf_cells[[i]]$eval_perf[[m]]$pred_obs,
+                          rf_cells[[i]]$eval_perf[[m]]$act_obs)
+    gmm_pred <- prediction(gmm_cells[[i]]$eval_perf[[m]]$pred_obs,
+                           gmm_cells[[i]]$eval_perf[[m]]$act_obs)
+
+    # F-measure performance
+    f_melissa <- performance(melissa_pred, "f")
+    f_melissa_rate <- performance(melissa_rate_pred, "f")
+    f_indep_prof <- performance(indep_prof_pred, "f")
+    f_indep_rate <- performance(indep_rate_pred, "f")
+    f_rf <- performance(rf_pred, "f")
+    f_gmm <- performance(gmm_pred, "f")
+
+    dt <- data.table(cells = io$cells_analysis[m],
+                     auc_melissa = performance(melissa_pred, "auc")@y.values[[1]],
+                     auc_melissa_rate = performance(melissa_rate_pred, "auc")@y.values[[1]],
+                     auc_indep_prof = performance(indep_prof_pred, "auc")@y.values[[1]],
+                     auc_indep_rate = performance(indep_rate_pred, "auc")@y.values[[1]],
+                     auc_rf = performance(rf_pred, "auc")@y.values[[1]],
+                     auc_gmm = performance(gmm_pred, "auc")@y.values[[1]],
+
+                     f_melissa = f_melissa@y.values[[1]][min(which(f_melissa@x.values[[1]] <= 0.5))],
+                     f_melissa_rate = f_melissa_rate@y.values[[1]][min(which(f_melissa_rate@x.values[[1]] <= 0.5))],
+                     f_indep_prof = f_indep_prof@y.values[[1]][min(which(f_indep_prof@x.values[[1]] <= 0.5))],
+                     f_indep_rate = f_indep_rate@y.values[[1]][min(which(f_indep_rate@x.values[[1]] <= 0.5))],
+                     f_rf = f_rf@y.values[[1]][min(which(f_rf@x.values[[1]] <= 0.5))],
+                     f_gmm = f_gmm@y.values[[1]][min(which(f_gmm@x.values[[1]] <= 0.5))],
+
+                     melissa_ari = cluster_ari(cell_data$synth_data$C_true, dt_melissa_cells[[i]]$melissa_prof[[m]]$r_nk),
+                     melissa_rate_ari = cluster_ari(cell_data$synth_data$C_true, dt_melissa_cells[[i]]$melissa_rate[[m]]$r_nk),
+                     gmm_ari = cluster_ari(cell_data$synth_data$C_true, gmm_cells[[i]]$gmm[[m]]$r_nk),
+                     melissa_error = cluster_error(cell_data$synth_data$C_true, dt_melissa_cells[[i]]$melissa_prof[[m]]$r_nk),
+                     melissa_rate_error = cluster_error(cell_data$synth_data$C_true, dt_melissa_cells[[i]]$melissa_rate[[m]]$r_nk),
+                     gmm_error = cluster_error(cell_data$synth_data$C_true, gmm_cells[[i]]$gmm[[m]]$r_nk)
+    )
+    # Add results to final data.table
+    dt_cell_analysis <- rbind(dt_cell_analysis, dt)
+  }
+}
+rm(iter, i, m, N, M, dt_melissa_cells, indep_cells, rf_cells, gmm_cells, dt, cell_data)
+```
+
+
+# ARI performance CpG coverage
+```{r ari_plot_cpg, fig.wide=TRUE, echo=FALSE, include=TRUE, warning=FALSE, fig.width=10, fig.height=7}
+dt_ari_cpg_jitter <- copy(dt_cpg_analysis)
+dt_ari_cpg_jitter <- dt_ari_cpg_jitter %>% .[, c("cpg_cov", "melissa_ari", "melissa_rate_ari", "gmm_ari", "pca_gmm_ari")] %>% setnames(c("cpg_cov", "melissa_ari", "melissa_rate_ari", "gmm_ari", "pca_gmm_ari"), c("x", "Melissa", "Melissa Rate", "GMM", "GMM-PCA")) %>% .[, x := as.factor(x)] %>% melt(variable.name = "Model", value.name = "y")
+p_ari_cpg_jitter <- ari_jitter_plot(dt_ari_cpg_jitter, x_lab = "CpG coverage", y_lab = "ARI", title = "")
+print(p_ari_cpg_jitter)
+
+pdf(file = paste0("out/synthetic/ari-pca-gmm.pdf"), width = 10, height = 5, useDingbats = FALSE)
+p_ari_cpg_jitter
+dev.off()
+```
+
+
+# ARI performance cluster dissimilarity
+```{r ari_plot_diss, fig.wide=TRUE, echo=FALSE, include=TRUE, warning=FALSE, fig.width=10, fig.height=7}
+dt_ari_var_jitter <- copy(dt_var_analysis)
+dt_ari_var_jitter <- dt_ari_var_jitter %>% .[, c("cell_var", "melissa_ari", "melissa_rate_ari", "gmm_ari")] %>% setnames(c("cell_var", "melissa_ari", "melissa_rate_ari", "gmm_ari"), c("x", "Melissa", "Melissa Rate", "GMM")) %>% .[, x := as.factor(x)] %>% melt(variable.name = "Model", value.name = "y")
+p_ari_var_jitter <- ari_jitter_plot(dt_ari_var_jitter, x_lab = "Cluster dissimilarity", y_lab = "ARI", title = "")
+print(p_ari_var_jitter)
+
+# pdf(file = paste0("out/synthetic/gmm/ari-synth.pdf"), width = 10, height = 5, useDingbats = FALSE)
+# p_ari_var_jitter
+# dev.off()
+```
+
+
+# ARI performance cells assayed
+```{r ari_plot_diss, fig.wide=TRUE, echo=FALSE, include=TRUE, warning=FALSE, fig.width=10, fig.height=7}
+dt_ari_cell_jitter <- copy(dt_cell_analysis)
+dt_ari_cell_jitter <- dt_ari_cell_jitter %>% .[, c("cells", "melissa_ari", "melissa_rate_ari", "gmm_ari")] %>% setnames(c("cells", "melissa_ari", "melissa_rate_ari", "gmm_ari"), c("x", "Melissa", "Melissa Rate", "GMM")) %>% .[, x := as.factor(x)] %>% melt(variable.name = "Model", value.name = "y")
+p_ari_cell_jitter <- ari_jitter_plot(dt_ari_cell_jitter, x_lab = "Cells assayed", y_lab = "ARI", title = "")
+print(p_ari_cell_jitter)
+
+# pdf(file = paste0("out/synthetic/gmm/ari-synth-cells.pdf"), width = 10, height = 5, useDingbats = FALSE)
+# p_ari_cell_jitter
+# dev.off()
+```
+
+
+# Model selection
+```{r model_selection, fig.wide=TRUE, echo=FALSE, include=TRUE, warning=FALSE, fig.width=10, fig.height=7}
+# Data
+io <- list()
+io$script_dir    <- "../"
+io$model_sel_dir <- "../local-data/melissa/synthetic/model-selection/"
+io$K <- 10
+# Different CpG coverages
+io$cluster_var_analysis <- seq(0, 1, .1)
+# Load joint analysis results
+broad_model <- readRDS(paste0(io$model_sel_dir, "encode_broad_model_selection_K", io$K, ".rds"))
+strict_model <- readRDS(paste0(io$model_sel_dir, "encode_strict_model_selection_K", io$K, ".rds"))
+
+dt_model_analysis <- data.table(cell_var = numeric(),
+                                broad_K = numeric(),
+                                strict_K = numeric())
+for (i in 1:5) {
+  for (m in 1:length(io$cluster_var_analysis)) {
+    dt <- data.table(cell_var = io$cluster_var_analysis[m],
+                     broad_K = length(which(broad_model[[i]]$bpr_prof_fit[[m]]$delta > 6)),
+                     strict_K = length(which(strict_model[[i]]$bpr_prof_fit[[m]]$delta > 6)))
+    dt_model_analysis <- rbind(dt_model_analysis, dt)
+  }
+}
+rm(dt, i, m, broad_model, strict_model)
+
+dt_model_jitter <- copy(dt_model_analysis)
+dt_model_jitter <- dt_model_jitter %>% setnames(c("cell_var", "broad_K", "strict_K"),
+                                                c("x", "Broad Prior", "Strict Prior")) %>%
+  .[, x := as.factor(x)] %>% melt(variable.name = "Model", value.name = "y")
+p_model_jitter <- ari_jitter_plot(dt_model_jitter, x_lab = "Cluster dissimilarity",
+                                  y_lab = "Clusters K", title = "")
+print(p_model_jitter)
+```
+
+
+# Model efficicency
+```{r model_efficiency, fig.wide=TRUE, warning=FALSE, echo=FALSE, include=TRUE, fig.width=10, fig.height=7}
+# Data
+library(microbenchmark)
+io <- list()
+io$script_dir    <- "../"
+io$model_eff_dir <- "../local-data/melissa/synthetic/model-efficiency/"
+io$K <- 3
+io$M <- 200
+io$N <- c(50, 100, 200, 500, 1000, 2000)
+
+io$iter <- seq(1, 5)
+dt_efficiency_analysis <- data.table(cells = numeric(), min_gibbs = numeric(), min_vb = numeric())
+for (i in io$iter) {
+  for (n in io$N) {
+    eff_dt <- readRDS(paste0(io$model_eff_dir, "model_efficiency_K", io$K, "_M",
+                             io$M, "_N", n, "_", i, ".rds"))[[1]]
+    dt <- data.table(cells = n, min_gibbs = (eff_dt$time[which(eff_dt[, "expr"] == "gibbs")]) / 10^9 / 60 / 60,
+                     min_vb = (eff_dt$time[which(eff_dt[, "expr"] == "vb")]) / 10^9 / 60 / 60 )
+    dt_efficiency_analysis <- rbind(dt_efficiency_analysis, dt)
+  }
+}
+rm(i, n, eff_dt)
+
+dt_eff_jitter <- copy(dt_efficiency_analysis)
+dt_eff_jitter <- dt_eff_jitter %>% setnames(c("cells", "min_gibbs", "min_vb"), c("x", "Gibbs", "VB")) %>%
+  .[, x := as.factor(x)] %>% melt(variable.name = "Model", value.name = "y") %>%
+  .[, Model := factor(Model, levels = c("VB", "Gibbs"))]
+p_eff_jitter <- eff_jitter_plot(dt_eff_jitter, x_lab = "Cells", y_lab = "Hours", title = "")
+print(p_eff_jitter)
+```
+
+
+# Joint plot AUC ENCODE synthetic
+```{r joint_plot_auc, fig.wide=TRUE, eval=TRUE, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE, fig.height=7, fig.width=16}
+## AUC plot
+p_auc_cpg_jitter <- auc_jitter_plot(auc_cpg_jitter, x_lab = "CpG coverage", y_lab = "AUC", title = "") +
+  theme(legend.position = "none") + scale_y_continuous(limits = c(0.5, .9), breaks = pretty_breaks(n = 6))
+p_auc_cell_jitter <- auc_jitter_plot(auc_cell_jitter, x_lab = "Cells assayed", y_lab = "AUC", title = "") +
+  theme(legend.position = "right") + scale_y_continuous(limits = c(0.5, .9), breaks = pretty_breaks(n = 6))
+# p_auc_var_jitter <- auc_jitter_plot(auc_var_jitter, x_lab = "Cluster dissimilarity", y_lab = "AUC", title = "") +
+#     theme(legend.position = "right") + scale_y_continuous(limits = c(0.5, .9), breaks = pretty_breaks(n = 6))
+
+final_fig_auc <- plot_grid(p_auc_cpg_jitter, p_auc_cell_jitter, labels = c("a", "b"),
+                           label_size = 25, ncol = 2, nrow = 1, rel_widths = c(1, 1.5))
+print(final_fig_auc)
+
+pdf(file = paste0("out/synthetic/auc-cpg-cells.pdf"), width = 17, height = 6, useDingbats = FALSE)
+final_fig_auc
+dev.off()
+```
+
+
+# Joint plot F-measure ENCODE synthetic
+```{r joint_plot_f, fig.wide=TRUE, eval=TRUE, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE, fig.height=7, fig.width=16}
+## AUC plot
+p_f_cpg_jitter <- auc_jitter_plot(f_cpg_jitter, x_lab = "CpG coverage", y_lab = "F-measure", title = "") +
+  theme(legend.position = "none") + scale_y_continuous(limits = c(0.3, .8), breaks = pretty_breaks(n = 6))
+p_f_cell_jitter <- auc_jitter_plot(f_cell_jitter, x_lab = "Cells assayed", y_lab = "F-measure", title = "") +
+  theme(legend.position = "right") + scale_y_continuous(limits = c(0.3, .8), breaks = pretty_breaks(n = 6))
+
+final_fig_f <- plot_grid(p_f_cpg_jitter, p_f_cell_jitter, labels = c("a", "b"),
+                         label_size = 25, ncol = 2, nrow = 1, rel_widths = c(1, 1.5))
+print(final_fig_f)
+
+pdf(file = paste0("out/synthetic/f-cpg-cells.pdf"), width = 17, height = 6, useDingbats = FALSE)
+final_fig_f
+dev.off()
+```
+
+
+# Joint plot ENCODE synthetic, cluster dissimilarity
+```{r joint_plot_dissimilarity, fig.wide=TRUE, eval=TRUE, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE, fig.height=7, fig.width=16}
+## AUC plot
+p_auc_var_jitter <- auc_jitter_plot(auc_var_jitter, x_lab = "Cluster dissimilarity", y_lab = "AUC", title = "") +
+  theme(legend.position = "none") + scale_y_continuous(limits = c(0.5, .9), breaks = pretty_breaks(n = 6))
+p_f_var_jitter <- auc_jitter_plot(f_var_jitter, x_lab = "Cluster dissimilarity", y_lab = "F-measure", title = "") +
+  theme(legend.position = "right") + scale_y_continuous(limits = c(0.3, .8), breaks = pretty_breaks(n = 6))
+
+final_fig_var <- plot_grid(p_auc_var_jitter, p_f_var_jitter, labels = c("a", "b"),
+                           label_size = 25, ncol = 2, nrow = 1, rel_widths = c(1, 1.45))
+print(final_fig_var)
+
+pdf(file = paste0("out/synthetic/cl-var.pdf"), width = 17, height = 6, useDingbats = FALSE)
+final_fig_var
+dev.off()
+```
+
+
+# Joint plot performance ENCODE synthetic
+```{r joint_plot_analysis, fig.wide=TRUE, eval=TRUE, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE, fig.height=10, fig.width=16}
+# Joint plot of ARI, model selection and model efficiency
+p_ari_var_jitter <- ari_jitter_plot(dt_ari_var_jitter, x_lab = "Cluster dissimilarity", y_lab = "ARI", title = "Cluster performance") +
+  theme(legend.position = "none")  +
+  scale_x_discrete(breaks = pretty_breaks(n = 6))
+p_ari_cpg_jitter <- ari_jitter_plot(dt_ari_cpg_jitter, x_lab = "CpG coverage", y_lab = "ARI", title = "Cluster performance") +
+  theme(legend.position = c(0.55, 0.23))  +
+  scale_x_discrete(breaks = pretty_breaks(n = 5))
+p_ari_cell_jitter <- ari_jitter_plot(dt_ari_cell_jitter, x_lab = "Cells assayed", y_lab = "ARI", title = "Cluster performance") +
+  theme(legend.position = "none")  #+
+#scale_x_discrete(breaks = pretty_breaks(n = 6))
+p_model_jitter <- ari_jitter_plot(dt_model_jitter, x_lab = "Cluster dissimilarity", y_lab = "Clusters K", title = "Model Selection") +
+  theme(legend.position = c(0.55, 0.23)) +
+  scale_x_discrete(breaks = pretty_breaks(n = 6))
+
+top_ari_analysis <- plot_grid(p_ari_cpg_jitter, p_ari_var_jitter,  labels = c("a", "b"),
+                              label_size = 25, ncol = 2, nrow = 1, rel_widths = c(1, 1))
+bot_perf_analysis <- plot_grid(p_ari_cell_jitter, p_model_jitter,  labels = c("c", "d"),
+                               label_size = 25, ncol = 2, nrow = 1, rel_widths = c(1, 1))
+
+final_encode_analysis <- plot_grid(top_ari_analysis, bot_perf_analysis, ncol = 1, nrow = 2, rel_widths = c(1, 1))
+print(final_encode_analysis)
+
+pdf(file = paste0("out/synthetic/perf-synth.pdf"), width = 14, height = 10, useDingbats = FALSE)
+final_encode_analysis
+dev.off()
+```
+
+
+# Joint plot cells assayed - imputation and clustering
+```{r joint_plot_cells_imputation_clustering, fig.wide=TRUE, eval=TRUE, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE, fig.height=6, fig.width=16}
+# Joint plot of ARI, model selection and model efficiency
+p_ari_cell_jitter <- ari_jitter_plot(dt_ari_cell_jitter, x_lab = "Cells assayed", y_lab = "ARI", title = "Cluster performance") +
+  theme(legend.position = c(0.55, 0.23))
+#scale_x_discrete(breaks = pretty_breaks(n = 6))
+
+final_fig_cell_imp_cl <- plot_grid(p_auc_cell_jitter, p_ari_cell_jitter, labels = c("a", "b"),
+                                   label_size = 25, ncol = 2, nrow = 1, rel_widths = c(1.3, 1))
+print(final_fig_cell_imp_cl)
+
+pdf(file = paste0("out/synthetic/auc-ari-cells.pdf"), width = 17, height = 6, useDingbats = FALSE)
+final_fig_cell_imp_cl
+dev.off()
+```
+
+
+# Efficiency plot performance ENCODE synthetic
+```{r efficiency_plot_analysis, fig.wide=TRUE, eval=TRUE, echo=FALSE, include=TRUE, warning=FALSE, message=FALSE, fig.height=14, fig.width=16}
+p_eff_jitter <- eff_jitter_plot(dt_eff_jitter, x_lab = "Cells", y_lab = "Hours", title = "Model Cost") +
+  theme(legend.position = c(0.06, 0.8))
+print(p_eff_jitter)
+pdf(file = paste0("out/synthetic/efficiency.pdf"), width = 10, height = 5, useDingbats = FALSE)
+p_eff_jitter
+dev.off()
+```
