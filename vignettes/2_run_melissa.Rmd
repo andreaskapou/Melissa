@@ -1,0 +1,225 @@
+---
+title: Cluster and impute scBS-seq data using Melissa
+author:
+- name: Andreas C. Kapourani
+  affiliation: School of Informatics, University of Edinburgh, UK
+  email: c.a.kapourani@ed.ac.uk or kapouranis.andreas@gmail.com
+- name: Guido Sanguinetti
+  affiliation: School of Informatics, University of Edinburgh, UK
+  email: G.Sanguinetti@ed.ac.uk
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    titlecaps: false
+    toc_float: true
+package: Melissa
+vignette: |
+  %\VignetteIndexEntry{2: Cluster and impute scBS-seq data using Melissa}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r style, echo=FALSE, results='hide', message=FALSE}
+library(BiocStyle)
+library(knitr)
+opts_chunk$set(error = FALSE, message = FALSE, warning = FALSE)
+opts_chunk$set(fig.asp = 1)
+```
+
+# Installation
+```{r installation, echo=TRUE, eval=FALSE}
+## try http:// if https:// URLs are not supported
+if (!requireNamespace("BiocManager", quietly=TRUE))
+    install.packages("BiocManager")
+BiocManager::install("Melissa")
+
+## Or download from Github repository
+# install.packages("devtools")
+devtools::install_github("andreaskapou/Melissa", build_vignettes = TRUE)
+```
+
+
+# Background
+Measurements of DNA methylation at the single cell level are promising to revolutionise our understanding of epigenetic control of gene expression. Yet, intrinsic limitations of the technology result in very sparse coverage of CpG sites (around 5% to 20% coverage), effectively limiting the analysis repertoire to a semi-quantitative level. Melissa (MEthyLation Inference for Single cell Analysis) [1], is a Bayesian hierarchical method to quantify spatially-varying methylation profiles across genomic regions from single-cell bisulfite sequencing data (scBS-seq). 
+
+Melissa addresses the data sparsity issue by leveraging local correlations between neighbouring CpGs and similarity between individual cells (see Fig.\@ref(fig:melissa)). The starting point is the definition of a set of genomic regions (e.g. genes or enhancers). Within each region, Melissa postulates a latent profile of methylation, a function mapping each CpG within the region to a number in $[0,1]$ which defines the probability of that CpG being methylated. To ensure spatial smoothness of the profile, Melissa uses a generalised linear model of basis function regression along the lines of [2,3] (with modified likelihood to account for single cell data). Local correlations are however often insufficient for regions with extremely sparse coverage, and these are quite common in scBS-seq data. Therefore, we share information across different cells by coupling the local GLM regressions through a shared prior distribution. In order to respect the (generally unknown) population structure that may be present within the cells assayed, we choose a (finite) Dirichlet mixture model prior. 
+
+```{r melissa, fig.retina = NULL, fig.align='center', fig.cap="`Melissa` model overview. Melissa combines a likelihood computed from single cell methylation profiles fitted to each genomic region using a supervised regression approach (bottom left) and an unsupervised Bayesian clustering prior (top left). The posterior distribution provides a methylome-based clustering (top right) and imputation (bottom right) of single cells.", echo=FALSE}
+knitr::include_graphics("../inst/figures/melissa.png")
+```
+
+# Melissa analysis pipeline
+
+## Reading scBS-seq data
+For reading, processing and filtering `raw` scBS-seq data consult the vignette "__Process and filter scBS-seq data__", which provides a step by step tutorial on obtaining a `melissa_data_obj` object, which will be the input to the variational inference machinery for Melissa. 
+
+## Loading synthetic data
+To create a minimal working example, Melissa comes with already generated synthetic data of $N = 200$ cells and $M = 100$ genomic regions, consisting of $K = 4$ cell subpopulations. 
+
+```{r load_synth_data}
+suppressPackageStartupMessages(library(Melissa)) # Load package
+dt_obj <- melissa_encode_dt   # Load synthetic data
+```
+
+<!-- For computational efficiency, we will retain the first 50 genomic regions per cell. -->
+```{r, eval=FALSE, echo=FALSE, include=FALSE}
+# For efficiency keep only the first 50 genomic regions
+dt_obj$met <- lapply(dt_obj$met, function(x) x[1:50])
+```
+
+
+The structure of the `dt_obj` is a list of three elements, which only the `met` element is of direct interest, the remaining ones are mostly for keeping metadata information and information about the data generating / processing procedure. 
+```{r}
+# Elements of `dt_obj` object
+names(dt_obj)
+```
+
+From the $2^{nd}$ cell we can access the $50^{th}$ genomic region using the following code, where the 1st column represents the relative CpG location within the region (scaled to [-1, 1] interval) and the 2nd column represents the methylation state: 1 = methylated and 0 = unmethylated.
+```{r}
+head(dt_obj$met[[2]][[50]])
+```
+
+```{r}
+# Number of cells
+cat("Number of cells: ", length(dt_obj$met))
+```
+
+```{r}
+# Number of genomic regions in each cell
+cat("Number of genomic regions: ", length(dt_obj$met[[1]]) )
+```
+
+
+## Creating basis object
+For each genomic region we infer a methylation profile using a GLM of basis function regression along the lines of [1,2]. Again we use the functionality of `r Biocpkg("BPRMeth")` to create a basis object, in our case it will be a __Radial Basis Function (RBF)__, however, one can create __polynomial__ and __Fourier__ basis functions which can be created with the `create_polynomial_object` and `create_fourier_object` functions, respectively.
+```{r create_basis}
+library(BPRMeth)
+# Create RBF basis object with 4 RBFs
+basis_obj <- create_rbf_object(M = 4)
+```
+
+The `rbf` object contains information such as the centre locations $\mu_{j}$ and the value of the spatial scale parameter $\gamma$
+```{r show_basis}
+# Show the slots of the 'rbf' object
+basis_obj
+```
+
+# Clustering and imputing scBS-seq data
+Now we are ready to perfrom inference using the Melissa model and jointly cluster cells based on their DNA methylation landscape and impute missing CpG methylation states. 
+
+## Partitioning to training and test set (Optional)
+To be able to evaluate the imputation performance of Melissa, we need ground truth labels of methylation states. To do so, we can partition the original dataset to training and test set, where a subset of CpGs will be used for training and the remaining sites for testing. For instance in a genomic region with 50 CpGs, 35 will be used for training and the remaining will be used for testing. We should highlight that the partitioning is at the genomic region level and not at the cell level, so we do not have to impute the methylome of a whole cell (which is not practically useful from the first place). 
+
+__Note__ that this process is optional and is required only for being able to evaluate how well Melissa performs imputation. The user can skip the partitioning step and directly run Melissa on the whole dataset. For real scBS-seq data the user can used the inferred profiles to impute CpGs with no coverage at all. 
+```{r partition_data}
+set.seed(15)
+# Partition to training and test set
+dt_obj <- partition_dataset(dt_obj = dt_obj, data_train_prcg = 0.2,
+                                    region_train_prcg = 1, cpg_train_prcg = 0.4, 
+                                    is_synth = TRUE)
+```
+This code snippet, will update the `met` element of the `dt_obj` to retain only the CpGs used as training set and the test set will be now stored in the `met_test` element in the same object. Note that during inference, Melissa will only have access to the training data and will ignore totally the test set. For more details on the usage of the additional parameters type `?partition_dataset`.
+
+## Running Melissa model
+Whether or not a subset of the data was used as test set, the command for running Melissa remains the same. We need to provide it with the (training) data `X`, the number of clusters `K` that we expect to find in the cell population, the basis function object and with initial values for the hyperparameters. In this example, we will mostly keep the default values for the (hyper)-parameters.
+
+```{r run_melissa}
+set.seed(15)
+# Run Melissa with K = 4 clusters
+melissa_obj <- melissa(X = dt_obj$met, K = 4, basis = basis_obj,
+                       vb_max_iter = 50, vb_init_nstart = 1, 
+                       vb_init_max_iter = 5, is_parallel = TRUE, no_cores = 3, 
+                       is_verbose = TRUE)
+```
+
+### Output summary
+We can check the mixing proportions for each cluster, to obtain an estimate of the proportion of cells that are assigned to each cell subpopulation.
+```{r summary_mixing_proportions}
+melissa_obj$pi_k
+```
+
+The posterior probabilities of each cell belonging to a certain cluster (__responsibilities__) are stored in the `r_nk` element. Here each column represents a different cluster and each row a different cell.
+```{r summary_responsibilities}
+head(melissa_obj$r_nk)
+```
+
+The posterior mean methylation profile of each genomic region and cell subtype is stored in the `W` element. We can access the posterior weights of the 10th genomic region for the 2nd cell subpopulation. Here each element of the vector corresponds to a basis function, except the first element which corresponds to the bias term.
+```{r summary_weights}
+melissa_obj$W[10, , 3]
+```
+
+### Plottting methylation profiles
+We can plot methylation profiles of each cell subtype for specific genomic regions using the `plot_melissa_profiles` function.
+```{r plot_profiles_1}
+# Plot profiles from all cell subtypes for genomic region 22
+plot_melissa_profiles(melissa_obj = melissa_obj, region = 22, 
+                      title = "Methylation profiles for region 22")
+```
+
+```{r plot_profiles_2}
+# Plot profiles from all cell subtypes for genomic region 20
+plot_melissa_profiles(melissa_obj = melissa_obj, region = 77, 
+                      title = "Methylation profiles for region 100")
+```
+
+
+### Evaluating clustering performance
+Since these are synthetic generated data, we have the ground truth labels for the assignment of each cell to the corresponding cluster, which is stored in `dt_obj$opts$C_true`. Let's now evaluate the clustering performance both in terms of __Adjusted Rand Index__ (ARI) and __clustering assignment error__ metrics.
+```{r evaluate_cluster_perf}
+# Run clustering performance
+melissa_obj <- eval_cluster_performance(melissa_obj, dt_obj$opts$C_true)
+```
+
+```{r ari_measure}
+# ARI metric
+cat("ARI: ", melissa_obj$clustering$ari)
+```
+
+```{r cluster_assignment_error}
+# Clustering assignment error metric
+cat("Clustering assignment error: ", melissa_obj$clustering$error)
+```
+
+As we can observe Melissa clustered perfectly the synthetic data, which are also clearly separable from the example methylation profiles shown above.
+
+### Evaluating imputation performance
+To evaluate the imputation performance of Melissa, we use the held out test set and compare the true methylation state of each CpG with the predicted methylation value, which is the evaluation of the latent methylation profile at the corresponding location.
+```{r perfrom_imputation}
+imputation_obj <- impute_met_state(obj = melissa_obj, test = dt_obj$met_test)
+```
+
+Now we use different metrics to evaluate the prediction performance, such as AUC, ROC curve and precision-recall curves and store them as elements in `melissa_obj` object.
+```{r evaluate_imputation}
+melissa_obj <- eval_imputation_performance(obj = melissa_obj, 
+                                           imputation_obj = imputation_obj)
+```
+
+```{r auc}
+# AUC 
+cat("AUC: ", melissa_obj$imputation$auc)
+```
+
+```{r f_measure}
+# F-measure
+cat("F-measure: ", melissa_obj$imputation$f_measure)
+```
+
+# Session Info
+This vignette was compiled using:
+```{r session_info, echo=TRUE, message=FALSE}
+sessionInfo()
+```
+
+
+# Bibliography
+[1] Kapourani, C. A., & Sanguinetti, G. (2018). Melissa: Bayesian clustering and imputation of single cell methylomes. __bioRxiv__, 312025, DOI: [https://doi.org/10.1101/312025](https://doi.org/10.1101/312025)
+
+[2] Kapourani, C. A., & Sanguinetti, G. (2016). Higher order methylation features for clustering and prediction in epigenomic studies. __Bioinformatics__, 32(17), i405-i412, DOI: [https://doi.org/10.1093/bioinformatics/btw432](https://doi.org/10.1093/bioinformatics/btw432)
+
+[3] Kapourani, C. A. & Sanguinetti, G. (2018). BPRMeth: a flexible Bioconductor package for modelling methylation profiles. __Bioinformatics__, DOI: [https://doi.org/10.1093/bioinformatics/bty129](https://doi.org/10.1093/bioinformatics/bty129)
+
+
+# Acknowledgements
+This package was developed at the University of Edinburgh in the School of Informatics, with support from Guido Sanguinetti.
+
+This study was supported in part by the EPSRC Centre for Doctoral Training in Data Science, funded by the UK Engineering and Physical Sciences Research Council (grant EP/L016427/1) and the University of Edinburgh.

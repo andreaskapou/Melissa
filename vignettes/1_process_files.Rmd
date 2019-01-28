@@ -1,0 +1,160 @@
+---
+title: Process and filter scBS-seq data
+author:
+- name: Andreas C. Kapourani
+  affiliation: School of Informatics, University of Edinburgh, UK
+  email: c.a.kapourani@ed.ac.uk or kapouranis.andreas@gmail.com
+- name: Guido Sanguinetti
+  affiliation: School of Informatics, University of Edinburgh, UK
+  email: G.Sanguinetti@ed.ac.uk
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    titlecaps: false
+    toc_float: true
+package: Melissa
+vignette: |
+  %\VignetteIndexEntry{1: Process and filter scBS-seq data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r style, echo=FALSE, results='hide', message=FALSE}
+library(BiocStyle)
+library(knitr)
+opts_chunk$set(error = FALSE, message = FALSE, warning = FALSE)
+opts_chunk$set(fig.asp = 1)
+```
+
+# Installation
+```{r installation, echo=TRUE, eval=FALSE}
+## try http:// if https:// URLs are not supported
+if (!requireNamespace("BiocManager", quietly=TRUE))
+    install.packages("BiocManager")
+BiocManager::install("Melissa")
+
+## Or download from Github repository
+# install.packages("devtools")
+devtools::install_github("andreaskapou/Melissa", build_vignettes = TRUE)
+```
+
+
+# Introduction
+Measurements of DNA methylation at the single cell level are promising to revolutionise our understanding of epigenetic control of gene expression. Yet, intrinsic limitations of the technology result in very sparse coverage of CpG sites (around 5% to 20% coverage), effectively limiting the analysis repertoire to a semi-quantitative level. Melissa (MEthyLation Inference for Single cell Analysis) [1], is a Bayesian hierarchical method to quantify spatially-varying methylation profiles across genomic regions from single-cell bisulfite sequencing data (scBS-seq). Melissa clusters individual cells based on local methylation patterns, enabling the discovery of epigenetic differences and similarities among individual cells. The clustering also acts as an effective regularisation method for imputation of methylation on unassayed CpG sites, enabling transfer of information between individual cells.
+
+# Reading scBS-seq data
+
+## Convert Bismark coverage format
+`Melissa` depends heavily on the `r Biocpkg("BPRMeth")` package [2, 3] for reading and processing bisulfite sequencing data. It assumes that the data are first processed using Bismark [4], hence from fastq and BAM files we will obtain a __coverage__ file by running the `bismark_methylation_extractor` command as shown below,
+```{r bismark, eval=FALSE}
+# Requires Bismark
+bismark_methylation_extractor --comprehensive --merge_non_CpG \
+  --no_header --gzip --bedGraph input_file.bam
+```
+
+The format of the _coverage_ file is the following
+
+`<chr> <start> <end> <met_prcg> <met_reads> <unmet_reads>`
+
+where each row corresponds to an __observed__ CpG (i.e. we have at least one read mapped to this location). Note that CpGs with no coverage are not included in this file. This format however contains redundant information, hence we bring the BS-seq files in the format that Melissa (and BPRMeth) require, which is
+
+`<chr> <start> <met_level>`
+
+where `met_level` corresponds to the binary methylation state, either 0 or 1. We can do this by calling the `binarise_files` helper function, which only requires the input directory of the files and optionally the path to the output directory. Each file of the `indir` corresponds to a different cell and is required to be in `.gz` file format.
+```{r binarise, eval=FALSE}
+library(Melissa)
+# Binarise BS-seq data
+binarise_files(indir = "path")
+```
+
+
+## Create methylation regions
+Now we are ready to process the binarised input files and create methylation regions using functions from the `r Biocpkg("BPRMeth")` package. Briefly, the steps required to create this object are as follows. 
+
+1. First we require annotation data using the `read_anno` file. __Note__ that the annotation file can contain __any genomic context__: from promoters and gene bodies to enhancers, Nanog regulatory regions and CTCF regions; hence `Melissa` can be used for a plethora of analyses that want to take spatial genomic correlations into account. 
+2. Next we need to read the methylation data using the `read_met` function. We will do this independently per cell. 
+3. Finally, the `create_region_object` will create the methylation regions object which is the main object for storing methylation data. 
+
+The `create_melissa_data_obj` is a wrapper function for doing all the above steps at once. __Note__ that this step is important so read carefully the purpose of all the parameters to obtain the right object for downstream analysis.
+```{r melissa_data_obj, echo=TRUE, message=FALSE, eval=FALSE}
+melissa_data <- create_melissa_data_obj(met_dir = "path_to_met_dir",
+      anno_file = "anno_file", cov = 3)
+```
+
+The `melissa_data$met` contains the methylation data whose structure is a list of length $N$ (number of cells), and each element of this list is another list of length $M$ (number of genomic regions). Each entry in the inner list is an $I\times 2$ matrix, where $I$ are the number of CpGs, where the 1st column contains the (relative) CpG locations and the 2nd column contains the methylation state: methylated or unmethylated.
+
+## Store object
+It is often useful to save this object to file with the `saveRDS` function. The object can then be restored using the `readRDS` function. This allows us to conduct downstream analysis without having to repeat the processing steps described above.
+```{r save_obj, eval=FALSE}
+saveRDS(file = "melissa_data_obj.rds", melissa_data)
+```
+
+# Filtering genomic regions
+Next we will filter genomic regions according to different criteria. Note that these steps and their combinations are all __optional__ and depend on the downstream analysis you want to perform.
+
+## Filter by CpG coverage
+Genomic regions with really sparse coverage of CpGs are not informative to infer methylation profiles. Hence, we only consider genomic regions with at least `min_cpgcov` CpG coverage in each region. Note that this step will not actually remove any genomic regions, it will only set to `NA` those regions that have coverage below the threshold.
+
+```{r filter_regions_by_coverage, eval=FALSE}
+melissa_data <- filter_by_cpg_coverage(melissa_data, min_cpgcov = 10)
+```
+
+## Filter by mean methylation variability across cells
+Genomic regions that have not heterogeneity across different cells are often of no interest, for example if we were to use them for identifying cell subpopulations. This way we will both keep only the informative genomic regions and reduce the number of genomic regions for downstream analysis for efficiency.
+```{r filter_regions_by_variability, eval=FALSE}
+melissa_data <- filter_by_variability(melissa_data, min_var = 0.2)
+```
+
+
+## Filter by genomic coverage across cells
+Genomic regions that have coverage only on a handful of cells are not powerful for sharing information across cells. Hence, regions that are are not covered in at least `min_cell_cov_prcg` of the cells are filtered out.
+```{r filter_by_coverage_across_cells, eval=FALSE}
+melissa_data <- filter_by_coverage_across_cells(melissa_data, 
+                                                min_cell_cov_prcg = 0.5)
+```
+
+
+## Store object
+```{r save_obj_filtered, eval=FALSE}
+saveRDS(file = "melissa_data_obj_filtered.rds", melissa_data)
+```
+
+
+# Case studies
+Below we show the settings used for processing and filtering the scBS-seq datasets from two different studies: 
+
+* __Smallwood et al. (2014)__ [5] with accession number GSE56879. 
+* __Angermueller et al. (2016)__ [6] with accession number GSE74535.
+
+For both datasets we used the already processed coverage files from Bismark. The filtering of cells that do not pass quality control (QC) was done according to the original studies. See supplementary information of the online papers for IDs of cells that passed filtering.
+
+## Smallwood et al. (2014)
+
+## Angermueller et al. (2016)
+
+
+# Session Info
+This vignette was compiled using:
+```{r session_info, echo=TRUE, message=FALSE}
+sessionInfo()
+```
+
+
+# Bibliography
+[1] Kapourani, C. A., & Sanguinetti, G. (2018). Melissa: Bayesian clustering and imputation of single cell methylomes. __bioRxiv__, 312025, DOI: [https://doi.org/10.1101/312025](https://doi.org/10.1101/312025)
+
+[2] Kapourani, C. A., & Sanguinetti, G. (2016). Higher order methylation features for clustering and prediction in epigenomic studies. __Bioinformatics__, 32(17), i405-i412, DOI: [https://doi.org/10.1093/bioinformatics/btw432](https://doi.org/10.1093/bioinformatics/btw432)
+
+[3] Kapourani, C. A. & Sanguinetti, G. (2018). BPRMeth: a flexible Bioconductor package for modelling methylation profiles. __Bioinformatics__, DOI: [https://doi.org/10.1093/bioinformatics/bty129](https://doi.org/10.1093/bioinformatics/bty129)
+
+[4] Krueger, F., & Andrews, S. R. (2011). Bismark: a flexible aligner and methylation caller for Bisulfite-Seq applications. __Bioinformatics__, 27(11), 1571-1572.
+
+[5] Smallwood, S. A., Lee, H. J., Angermueller C., Krueger F., Saadeh H., Peat J., Andrews S. R., Stegle S., Reik W., and Kelsey G. (2014). Single-cell genome-wide bisulfite sequencing for assessing epigenetic heterogeneity. __Nature methods__, 11(8):817.
+
+[6] Angermueller, C., Clark, S.J., Lee, H.J., Macaulay, I.C., Teng, M.J., Hu, T.X., Krueger, F., Smallwood, S.A., Ponting, C.P., Voet, T. and Kelsey, G. (2016). Parallel single-cell sequencing links transcriptional and epigenetic heterogeneity. __Nature methods__, 13(3), p.229.
+
+
+# Acknowledgements
+This package was developed at the University of Edinburgh in the School of Informatics, with support from Guido Sanguinetti.
+
+This study was supported in part by the EPSRC Centre for Doctoral Training in Data Science, funded by the UK Engineering and Physical Sciences Research Council (grant EP/L016427/1) and the University of Edinburgh.
