@@ -6,25 +6,21 @@ __Melissa__ (MEthyLation Inference for Single cell Analysis), is a Bayesian hier
 
 <!--- ![Melissa model overview](analysis/model/figures/melissa.png) -->
 
-<img src="analysis/model/figures/melissa.png" alt="" style="width: 50px;"/> 
+<img src="inst/figures/melissa.png" alt="" style="width: 50px;"/> 
 
 
 The probabilistic graphical representation of the Melissa model is shown below:
 
 ![](analysis/model/figures/melissa-model-small.png)
 
-## Project structure
 
-The code is structured as follows
+## Installation
+To get the latest development version from Github:
 
-* __analysis__ folder: Contains Rmd files for generating the final figures for synthetic and real data analysis. It also contains the `model/melissa_model.Rmd` file, which gives an extensive explanation of the model including mathematical derivations.
-* __clustering-imputation__ folder: Contains all required scripts for performing clustering and imputation on real and synthetic data.
-* __data__ folder: Contains annotation data and bulk profiles of the ENCODE data used for the simulation study.
-* __lib__ folder: Contains the `Melissa` model implementation both in VB and Gibbs, also includes helper and plotting functions.
-* __model-efficiency__ folder: Contains scripts for measuring model efficiency between VB and Gibbs implementations.
-* __model-selection__ folder: Contains scripts for performing Bayesian model selection.
-* __preprocessing__ folder: Contains scripts for pre-processing (synthetic and real datasets).
-* __test__ folder: Contains test scripts for quickly running `Melissa`.
+```R
+# install.packages("devtools")
+devtools::install_github("andreaskapou/BPRMeth", build_vignettes = TRUE)
+```
 
 ### Melissa dependence
 
@@ -33,6 +29,9 @@ Melissa depends heavily on the [BPRMeth package](https://academic.oup.com/bioinf
 `Bioconductor`: [http://bioconductor.org/packages/BPRMeth/](http://bioconductor.org/packages/BPRMeth/) and 
 
 `Github`: [https://github.com/andreaskapou/BPRMeth](https://github.com/andreaskapou/BPRMeth).
+
+### Archive repository
+There is also an archived version of the Melissa model for reproducing the results presented in the Kapourani and Sanguinetti (2018) biorXiv paper [https://github.com/andreaskapou/Melissa-archive](https://github.com/andreaskapou/Melissa-archive).
 
 
 ## Citation
