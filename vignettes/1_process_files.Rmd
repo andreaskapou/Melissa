@@ -2,7 +2,9 @@
 title: Process and filter scBS-seq data
 author:
 - name: Andreas C. Kapourani
-  affiliation: School of Informatics, University of Edinburgh, UK
+  affiliation: 
+  - School of Informatics, University of Edinburgh, UK
+  - Institute of Genetics and Molecular Medicine (IGMM), University of Edinburgh, UK
   email: c.a.kapourani@ed.ac.uk or kapouranis.andreas@gmail.com
 - name: Guido Sanguinetti
   affiliation: School of Informatics, University of Edinburgh, UK
@@ -121,17 +123,70 @@ saveRDS(file = "melissa_data_obj_filtered.rds", melissa_data)
 
 
 # Case studies
-Below we show the settings used for processing and filtering the scBS-seq datasets from two different studies: 
-
-* __Smallwood et al. (2014)__ [5] with accession number GSE56879. 
-* __Angermueller et al. (2016)__ [6] with accession number GSE74535.
-
-For both datasets we used the already processed coverage files from Bismark. The filtering of cells that do not pass quality control (QC) was done according to the original studies. See supplementary information of the online papers for IDs of cells that passed filtering.
-
 ## Smallwood et al. (2014)
+
+The __Smallwood et al. (2014)__ [5] dataset can be downloaded with accession number GSE56879. For this dataset we used the already processed coverage files from Bismark. The filtering of cells that do not pass quality control (QC) was done according to the original studies. See supplementary information of [5] for IDs of cells that passed filtering.
 
 ## Angermueller et al. (2016)
 
+The __Angermueller et al. (2016)__ [6] dataset can be downloaded with accession number GSE74535. For this dataset we used the already processed coverage files from Bismark. The filtering of cells that do not pass quality control (QC) was done according to the original studies. See supplementary information of [5] for IDs of cells that passed filtering.
+
+## Bulk WGBS Encode
+The analysis on the subsampled ENCODE WGBS data was performed on the bulk GM12878 (GEO [GSE86765](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE86765)) and H1-hESC (GEO [GSE80911](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE80911)) cell lines. The BAM files for these studies can be obtained directly from the ENCODE project portal.
+```{r, eval=FALSE}
+#=================
+# 1. Download BAM data
+DATA_DIR="../encode/wgbs/"
+# Download GM12878 cell line
+wget -P ${DATA_DIR}GM12878/ https://www.encodeproject.org/files/ENCFF681ASN/@@download/ENCFF681ASN.bam
+# Download H1-hESC cell line
+wget -P ${DATA_DIR}H1hESC/ https://www.encodeproject.org/files/ENCFF546TLK/@@download/ENCFF546TLK.bam
+```
+
+Then we subsample the WGBS data from the BAM file, that is, we are going to remove individual __reads__ instead of individual CpGs to take into account the nature of missing values of scBS-seq data. To do so we will run the `samtools view` command which subsamples random lines from a BAM file. This way, we can generate artificially 40 pseudo-single cells by keeping only 0.5% of the bulk reads for each single cell.
+```{r, eval=FALSE}
+data_dir="encode/wgbs/GM12878/SRR4235788.bam"
+out_dir="encode/wgbs/GM12878/subsampled/GM12878"
+for (( i=1; i <= 40; ++i ))
+do
+    my_command="samtools view -s ${i}.005 -b $data_dir > ${out_dir}_${i}.bam"
+    eval $my_command
+done
+```
+
+Finally, we run the `bismark_methylation_extractor` command to obtain the methylation state of each covered CpG fomr the resulting BAM files. The following command will result in files of `coverage` output and `bedGraph` output. 
+```{r, eval=FALSE} 
+data_dir="encode/wgbs/GM12878/subsampled/"
+proc_dir="encode/wgbs/GM12878/processed/"
+for (( i=1; i <= 40; ++i ))
+do
+    my_command="bismark_methylation_extractor --ignore 2 --comprehensive --merge_non_CpG --no_header --multicore 4 -o $proc_dir --gzip --bedGraph ${data_dir}GM12878_${i}.bam"
+    eval $my_command
+done
+```
+
+
+## Bulk RRBS Encode
+The analysis on the subsampled ENCODE RRBS data was performed again on the bulk GM12878 H1-hESC cells lines. We can download the the raw `fastq` files from.
+```{r, eval=FALSE}
+http://genome.ucsc.edu/cgi-bin/hgFileUi?db=hg19&g=wgEncodeHaibMethylRrbs
+```
+and search for `GM12878` or `H1-hESC` and download the fastq files only for the 2nd replicate. 
+
+Next we run [Bismark](https://www.bioinformatics.babraham.ac.uk/projects/bismark/Bismark_User_Guide.pdf). First run the `bismark_genome_preparation` command to create a genome indexing for `hg19`.
+```{r, eval=FALSE}
+bismark_genome_preparation hg19/ 
+```
+
+After that we run the `bismark` command which will create alignment files in `bam` format.
+```{r, eval=FALSE}
+#=================
+# 3. Run bismark
+bismark --genome hg19/ encode/wgEncodeHaibMethylRrbsGm12878HaibRawDataRep2.fastq.gz
+bismark --genome hg19/ encode/wgEncodeHaibMethylRrbsH1hescHaibRawDataRep2.fastq.gz
+```
+
+After this step, we follow the same process as we did for the bulk ENCODE WGBS data above.
 
 # Session Info
 This vignette was compiled using:

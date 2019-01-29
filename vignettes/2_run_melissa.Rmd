@@ -2,7 +2,9 @@
 title: Cluster and impute scBS-seq data using Melissa
 author:
 - name: Andreas C. Kapourani
-  affiliation: School of Informatics, University of Edinburgh, UK
+  affiliation: 
+  - School of Informatics, University of Edinburgh, UK
+  - Institute of Genetics and Molecular Medicine (IGMM), University of Edinburgh, UK
   email: c.a.kapourani@ed.ac.uk or kapouranis.andreas@gmail.com
 - name: Guido Sanguinetti
   affiliation: School of Informatics, University of Edinburgh, UK
@@ -110,13 +112,13 @@ Now we are ready to perfrom inference using the Melissa model and jointly cluste
 ## Partitioning to training and test set (Optional)
 To be able to evaluate the imputation performance of Melissa, we need ground truth labels of methylation states. To do so, we can partition the original dataset to training and test set, where a subset of CpGs will be used for training and the remaining sites for testing. For instance in a genomic region with 50 CpGs, 35 will be used for training and the remaining will be used for testing. We should highlight that the partitioning is at the genomic region level and not at the cell level, so we do not have to impute the methylome of a whole cell (which is not practically useful from the first place). 
 
-__Note__ that this process is optional and is required only for being able to evaluate how well Melissa performs imputation. The user can skip the partitioning step and directly run Melissa on the whole dataset. For real scBS-seq data the user can used the inferred profiles to impute CpGs with no coverage at all. 
+__Note__ that this process is optional and is required only for being able to evaluate how well Melissa performs imputation. The user can skip the partitioning step and directly run Melissa on the whole dataset. For real scBS-seq data the user can use the inferred profiles to impute CpGs with no coverage at all. 
 ```{r partition_data}
 set.seed(15)
 # Partition to training and test set
 dt_obj <- partition_dataset(dt_obj = dt_obj, data_train_prcg = 0.2,
-                                    region_train_prcg = 1, cpg_train_prcg = 0.4, 
-                                    is_synth = TRUE)
+                            region_train_prcg = 1, cpg_train_prcg = 0.4, 
+                            is_synth = TRUE)
 ```
 This code snippet, will update the `met` element of the `dt_obj` to retain only the CpGs used as training set and the test set will be now stored in the `met_test` element in the same object. Note that during inference, Melissa will only have access to the training data and will ignore totally the test set. For more details on the usage of the additional parameters type `?partition_dataset`.
 
@@ -150,13 +152,13 @@ melissa_obj$W[10, , 3]
 
 ### Plottting methylation profiles
 We can plot methylation profiles of each cell subtype for specific genomic regions using the `plot_melissa_profiles` function.
-```{r plot_profiles_1}
+```{r plot_profiles_1, fig.wide=TRUE}
 # Plot profiles from all cell subtypes for genomic region 22
 plot_melissa_profiles(melissa_obj = melissa_obj, region = 22, 
                       title = "Methylation profiles for region 22")
 ```
 
-```{r plot_profiles_2}
+```{r plot_profiles_2, fig.wide=TRUE}
 # Plot profiles from all cell subtypes for genomic region 20
 plot_melissa_profiles(melissa_obj = melissa_obj, region = 77, 
                       title = "Methylation profiles for region 100")
