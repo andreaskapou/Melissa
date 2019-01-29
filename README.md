@@ -19,7 +19,7 @@ To get the latest development version from Github:
 
 ```R
 # install.packages("devtools")
-devtools::install_github("andreaskapou/BPRMeth", build_vignettes = TRUE)
+devtools::install_github("andreaskapou/Melissa", build_vignettes = TRUE)
 ```
 
 ### Melissa dependence
