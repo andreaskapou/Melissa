@@ -40,7 +40,7 @@ devtools::install_github("andreaskapou/Melissa", build_vignettes = TRUE)
 
 
 # Introduction
-Measurements of DNA methylation at the single cell level are promising to revolutionise our understanding of epigenetic control of gene expression. Yet, intrinsic limitations of the technology result in very sparse coverage of CpG sites (around 5% to 20% coverage), effectively limiting the analysis repertoire to a semi-quantitative level. Melissa (MEthyLation Inference for Single cell Analysis) [1], is a Bayesian hierarchical method to quantify spatially-varying methylation profiles across genomic regions from single-cell bisulfite sequencing data (scBS-seq). Melissa clusters individual cells based on local methylation patterns, enabling the discovery of epigenetic differences and similarities among individual cells. The clustering also acts as an effective regularisation method for imputation of methylation on unassayed CpG sites, enabling transfer of information between individual cells.
+Measurements of DNA methylation at the single cell level are promising to revolutionise our understanding of epigenetic control of gene expression. Yet, intrinsic limitations of the technology result in very sparse coverage of CpG sites (around 5% to 20% coverage), effectively limiting the analysis repertoire to a semi-quantitative level. `Melissa` (MEthyLation Inference for Single cell Analysis) [1], is a Bayesian hierarchical method to quantify spatially-varying methylation profiles across genomic regions from single-cell bisulfite sequencing data (scBS-seq). Melissa clusters individual cells based on local methylation patterns, enabling the discovery of epigenetic differences and similarities among individual cells. The clustering also acts as an effective regularisation method for imputation of methylation on unassayed CpG sites, enabling transfer of information between individual cells.
 
 # Reading scBS-seq data
 
@@ -56,14 +56,14 @@ The format of the _coverage_ file is the following
 
 `<chr> <start> <end> <met_prcg> <met_reads> <unmet_reads>`
 
-where each row corresponds to an __observed__ CpG (i.e. we have at least one read mapped to this location). Note that CpGs with no coverage are not included in this file. This format however contains redundant information, hence we bring the BS-seq files in the format that Melissa (and BPRMeth) require, which is
+where each row corresponds to an __observed__ CpG (i.e. we have at least one read mapped to this location). Note that CpGs with no coverage are not included in this file. This format however contains redundant information, hence we bring the scBS-seq files in the format that Melissa (and BPRMeth) require, which is
 
 `<chr> <start> <met_level>`
 
 where `met_level` corresponds to the binary methylation state, either 0 or 1. We can do this by calling the `binarise_files` helper function, which only requires the input directory of the files and optionally the path to the output directory. Each file of the `indir` corresponds to a different cell and is required to be in `.gz` file format.
 ```{r binarise, eval=FALSE}
 library(Melissa)
-# Binarise BS-seq data
+# Binarise scBS-seq data
 binarise_files(indir = "path")
 ```
 
@@ -107,7 +107,7 @@ melissa_data <- filter_by_variability(melissa_data, min_var = 0.2)
 
 
 ## Filter by genomic coverage across cells
-Genomic regions that have coverage only on a handful of cells are not powerful for sharing information across cells. Hence, regions that are are not covered in at least `min_cell_cov_prcg` of the cells are filtered out.
+Genomic regions that have coverage only on a handful of cells are not powerful for sharing information across cells. For example, a specific promoter that has observations in 5 out of the 100 cells, will not contain enough to perform sharing of information, either for imputation or clustering. Hence, regions that are are not covered in at least `min_cell_cov_prcg` of the cells are filtered out.
 ```{r filter_by_coverage_across_cells, eval=FALSE}
 melissa_data <- filter_by_coverage_across_cells(melissa_data, 
                                                 min_cell_cov_prcg = 0.5)
