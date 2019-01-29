@@ -159,9 +159,9 @@ plot_melissa_profiles(melissa_obj = melissa_obj, region = 22,
 ```
 
 ```{r plot_profiles_2, fig.wide=TRUE}
-# Plot profiles from all cell subtypes for genomic region 20
+# Plot profiles from all cell subtypes for genomic region 77
 plot_melissa_profiles(melissa_obj = melissa_obj, region = 77, 
-                      title = "Methylation profiles for region 100")
+                      title = "Methylation profiles for region 77")
 ```
 
 
