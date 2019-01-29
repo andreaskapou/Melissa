@@ -11,7 +11,7 @@ __Melissa__ (MEthyLation Inference for Single cell Analysis), is a Bayesian hier
 
 The probabilistic graphical representation of the Melissa model is shown below:
 
-![](analysis/model/figures/melissa-model-small.png)
+![](inst/figures/melissa-model-small.png)
 
 
 ## Installation
