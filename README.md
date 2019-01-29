@@ -31,7 +31,7 @@ Melissa depends heavily on the [BPRMeth package](https://academic.oup.com/bioinf
 `Github`: [https://github.com/andreaskapou/BPRMeth](https://github.com/andreaskapou/BPRMeth).
 
 ### Archive repository
-There is also an archived version of the Melissa model for reproducing the results presented in the Kapourani and Sanguinetti (2018) biorXiv paper [https://github.com/andreaskapou/Melissa-archive](https://github.com/andreaskapou/Melissa-archive).
+There is also an archived version of the Melissa model (Github repo [https://github.com/andreaskapou/Melissa-archive](https://github.com/andreaskapou/Melissa-archive)) for reproducing the results presented in the Kapourani and Sanguinetti (2018) biorXiv paper.
 
 
 ## Citation
