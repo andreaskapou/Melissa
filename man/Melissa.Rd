@@ -87,6 +87,27 @@ An object of class \code{melissa} with the following elements:
   observation model check: \url{http://rpubs.com/cakapourani/vb-mixture-lr}}}
 }
 
+\examples{
+# Example of running Melissa on synthetic data
+
+# Create RBF basis object with 4 RBFs
+basis_obj <- BPRMeth::create_rbf_object(M = 4)
+
+set.seed(15)
+# Run Melissa
+melissa_obj <- melissa(X = melissa_synth_dt$met, K = 2, basis = basis_obj,
+   vb_max_iter = 10, vb_init_nstart = 1, vb_init_max_iter = 5,
+   is_parallel = FALSE, is_verbose = FALSE)
+
+# Extract mixing proportions
+print(melissa_obj$pi_k)
+
+}
+\seealso{
+\code{\link{create_melissa_data_obj}},
+  \code{\link{partition_dataset}}, \code{\link{plot_melissa_profiles}},
+  \code{\link[BPRMeth]{create_rbf_object}} \code{\link{filter_regions}}
+}
 \author{
 C.A.Kapourani \email{C.A.Kapourani@ed.ac.uk}
 }

@@ -32,3 +32,15 @@ The Melissa object with the following changes. The `met` element will
 \description{
 Partition synthetic dataset to training and test set
 }
+\examples{
+# Partition the synthetic data from Melissa package
+dt <- partition_dataset(melissa_encode_dt)
+
+}
+\seealso{
+\code{\link{create_melissa_data_obj}}, \code{\link{melissa}},
+\code{\link{filter_regions}}
+}
+\author{
+C.A.Kapourani \email{C.A.Kapourani@ed.ac.uk}
+}

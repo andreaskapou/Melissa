@@ -23,21 +23,23 @@ gg_theme <- function(){
 
 # Plot the predictive distribution
 #
-draw_predictive <- function(xs, pred, title = "", ...){
+draw_predictive <- function(xs, pred, K, title = "", ...){
+  xs = Cluster = ys = NULL
   # Store predictions data
-  dt <- data.table(pred) %>% setnames(paste0("C", seq(1:K))) %>%
-    melt(variable.name = "Cluster", value.name = "ys") %>% .[, xs := xs]
+  dt <- data.table::data.table(pred) %>%
+    data.table::setnames(paste0("C", seq(seq_len(K) ))) %>%
+    data.table::melt(variable.name = "Cluster", value.name = "ys") %>%
+    .[, xs := xs]
 
   p <- ggplot(dt, aes(x = xs, y = ys, color = Cluster)) +
     geom_line(size = 2) +
-    # geom_ribbon(aes(ymin=dt$ys_low, ymax=dt$ys_high, fill=Cluster),
-    #               alpha=0.23, size = 0.1) +
     scale_x_continuous(limits = c(-1, 1),
                        labels = c("-5kb", "", "TSS", "", "+5kb")) +
     scale_y_continuous(limits = c(0, 1)) +
     scale_color_brewer(palette = "Dark2") +
     scale_fill_brewer(palette = "Dark2") +
     labs(title = title, x = "x", y = "y") + gg_theme()
+  return(p)
 }
 
 
@@ -128,11 +130,11 @@ boxplot_theme <- function(){
 #'
 #' @export
 plot_melissa_profiles <- function(melissa_obj, region = 1, title = "Melissa profiles",
-                                  x_axis = "genomic region", y_axis = "met level",
-                                  x_labels = c("Upstream", "", "Centre", "", "Downstream"), ...) {
+                x_axis = "genomic region", y_axis = "met level",
+                x_labels = c("Upstream", "", "Centre", "", "Downstream"), ...) {
 
   W_Sigma <- list()
-  for (cl in 1:length(melissa_obj$pi_k)) {
+  for (cl in seq_along(melissa_obj$pi_k)) {
     W_Sigma[[cl]] <- melissa_obj$W_Sigma[[cl]][[region]]
   }
   obj <- list(W = melissa_obj$W[region,,],
@@ -146,66 +148,70 @@ plot_melissa_profiles <- function(melissa_obj, region = 1, title = "Melissa prof
 }
 
 
-
 # Create AUC errorbar plot
 errorbars_plot <- function(dt, title = "", x_lab = "", y_lab = ""){
+  x = y = Model = NULL
+  sd_y <- 0.001
   pd <- position_dodge(0.1) # move them .1 to the left and right
   p <- ggplot(dt, aes(x = x, y = y, colour = Model, group = Model)) +
     geom_errorbar(aes(ymin = y - sd_y, ymax = y + sd_y),
                   colour = "black", width = .3, position = pd) +
     geom_line(position = pd, size = 1.5) +
     geom_point(position = pd, size = 3, shape = 21, fill = "white") +
-    #scale_color_manual(values = c("red3", "cornflowerblue", "chocolate2", "green4", "dodgerblue4")) +
     scale_color_manual(values = c("red3", "chocolate2", "dodgerblue4",
                                   "mediumorchid4", "mistyrose4")) +
-    #scale_y_continuous(limits = c(0.78, .96), breaks=pretty_breaks(n=6)) +
     labs(title = title, x = x_lab, y = y_lab) + line_theme_synth()
   return(p)
 }
 
 # Create AUC jitter plot
+# TODO: Add this as function
 auc_jitter_plot <- function(dt, title = "", x_lab = "", y_lab = ""){
+  x = y = Model = NULL
   # pd <- position_dodge(0.1) # move them .1 to the left and right
   p <- ggplot(dt, aes(x = x, y = y, colour = Model, group = Model)) +
     geom_jitter(size = 2.1, width = 0.15, height = -0.1, shape = 21) +
-    # geom_point(data = dt2, aes(x = x, y = y), position = pd, size = 3, shape = 21, fill = "white") +
     geom_smooth(aes(fill = Model), span = 0.15, method = "loess",
                 se = TRUE, size = 1.3, alpha = 0.1) +
-    #scale_color_manual(values = c("red3", "cornflowerblue", "chocolate2", "green4", "dodgerblue4")) +
-    #scale_fill_manual(values = c("red3", "cornflowerblue", "chocolate2", "green4", "dodgerblue4")) +
-    scale_color_manual(values = c("red3", "chocolate2", "dodgerblue4", "mediumorchid4",
-                                  "mistyrose4", "darkgreen")) +
-    scale_fill_manual(values = c("red3", "chocolate2", "dodgerblue4", "mediumorchid4",
-                                 "mistyrose4", "darkgreen")) +
+    scale_color_manual(values = c("red3", "chocolate2", "dodgerblue4",
+                                  "mediumorchid4", "mistyrose4", "darkgreen")) +
+    scale_fill_manual(values = c("red3", "chocolate2", "dodgerblue4",
+                                 "mediumorchid4", "mistyrose4", "darkgreen")) +
     labs(title = title, x = x_lab, y = y_lab) + line_theme_synth()
   return(p)
 }
 
 # Create ARI jitter plot
+# TODO: Add this as function
 ari_jitter_plot <- function(dt, title = "", x_lab = "", y_lab = ""){
+  x = y = Model = NULL
   # pd <- position_dodge(0.1) # move them .1 to the left and right
   p <- ggplot(dt, aes(x = x, y = y, colour = Model, group = Model)) +
     geom_jitter(size = 2.1, width = 0.15, height = -0.1, shape = 21) +
-    # geom_point(data = dt2, aes(x = x, y = y), position = pd, size = 3, shape = 21, fill = "white") +
     geom_smooth(aes(fill = Model), span = 0.15, method = "loess",
                 se = FALSE, size = 1.3, alpha = 0.1) +
-    scale_color_manual(values = c("red3",  "dodgerblue4", "chocolate2", "green4", "cornflowerblue")) +
-    scale_fill_manual(values = c("red3",  "dodgerblue4", "chocolate2", "green4", "cornflowerblue")) +
+    scale_color_manual(values = c("red3",  "dodgerblue4", "chocolate2",
+                                  "green4", "cornflowerblue")) +
+    scale_fill_manual(values = c("red3",  "dodgerblue4", "chocolate2",
+                                 "green4", "cornflowerblue")) +
     labs(title = title, x = x_lab, y = y_lab) + line_theme_synth()
   return(p)
 }
 
 
 # Create AUC jitter plot
+# TODO: Add this as function
 eff_jitter_plot <- function(dt, title = "", x_lab = "", y_lab = ""){
+  x = y = Model = NULL
   # pd <- position_dodge(0.1) # move them .1 to the left and right
   p <- ggplot(dt, aes(x = x, y = y, colour = Model, group = Model)) +
     geom_jitter(size = 2.1, width = 0.2, height = .3, shape = 21) +
-    # geom_point(data = dt2, aes(x = x, y = y), position = pd, size = 3, shape = 21, fill = "white") +
     geom_smooth(aes(fill = Model), method = "loess",
                 se = FALSE, size = 1.3, alpha = 0.1) +
-    scale_color_manual(values = c("red3", "dodgerblue4", "chocolate2", "green4", "cornflowerblue")) +
-    scale_fill_manual(values = c("red3", "dodgerblue4", "chocolate2", "green4", "cornflowerblue")) +
+    scale_color_manual(values = c("red3", "dodgerblue4", "chocolate2",
+                                  "green4", "cornflowerblue")) +
+    scale_fill_manual(values = c("red3", "dodgerblue4", "chocolate2",
+                                 "green4", "cornflowerblue")) +
     labs(title = title, x = x_lab, y = y_lab) + line_theme_synth()
   return(p)
 }

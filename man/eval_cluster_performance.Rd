@@ -20,3 +20,32 @@ The `melissa` object, with an additional slot named `clustering`,
   computing clustering performance in terms of ARI and clustering assignment
   error.
 }
+\examples{
+## Extract synthetic data
+dt <- melissa_synth_dt
+
+# Partition to train and test set
+dt <- partition_dataset(dt)
+
+# Create basis object from BPRMeth package
+basis_obj <- BPRMeth::create_rbf_object(M = 3)
+
+# Run Melissa
+melissa_obj <- melissa(X = dt$met, K = 2, basis = basis_obj,
+   vb_max_iter = 10, vb_init_nstart = 1, vb_init_max_iter = 5,
+   is_parallel = FALSE, is_verbose = FALSE)
+
+# Compute cluster performance
+melissa_obj <- eval_cluster_performance(melissa_obj, dt$opts$C_true)
+
+cat("ARI: ", melissa_obj$clustering$ari)
+
+}
+\seealso{
+\code{\link{create_melissa_data_obj}}, \code{\link{melissa}},
+  \code{\link{filter_regions}}, \code{\link{eval_imputation_performance}},
+  \code{\link{eval_cluster_performance}}
+}
+\author{
+C.A.Kapourani \email{C.A.Kapourani@ed.ac.uk}
+}

@@ -25,3 +25,6 @@ Compute clustering assignment error
 average number of incorrect cluster assignments: \deqn{OE =
 \sum_{n=1}^{N}(I(LT_{n} \neq LP_{n})) / N}
 }
+\author{
+C.A.Kapourani \email{C.A.Kapourani@ed.ac.uk}
+}

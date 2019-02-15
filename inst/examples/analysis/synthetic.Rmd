@@ -391,7 +391,7 @@ print(p_auc_cell_jitter)
 
 
 # F measure performance across cells assayed 
-```{r f_plot_diss, fig.wide=TRUE, echo=FALSE, include=TRUE, warning=FALSE, fig.width=12, fig.height=8}
+```{r f_plot_diss_2, fig.wide=TRUE, echo=FALSE, include=TRUE, warning=FALSE, fig.width=12, fig.height=8}
 set.seed(17)
 f_cell_jitter <- copy(dt_cell_analysis)
 f_cell_jitter <- f_cell_jitter %>% .[, c("cells", "f_melissa", "f_melissa_rate", "f_indep_prof", "f_indep_rate", "f_rf", "f_gmm") ] %>% setnames(c("cells", "f_melissa", "f_melissa_rate", "f_indep_prof", "f_indep_rate", "f_rf", "f_gmm"), c("x", "Melissa", "Melissa Rate", "BPRMeth", "Rate", "RF", "GMM")) %>% .[, x := as.factor(x)] %>% melt(variable.name = "Model", value.name = "y") %>% .[, Model := factor(Model, levels = c("Melissa", "BPRMeth", "RF", "Melissa Rate", "Rate", "GMM"))]
@@ -427,7 +427,7 @@ print(p_ari_var_jitter)
 
 
 # ARI performance cells assayed
-```{r ari_plot_diss, fig.wide=TRUE, echo=FALSE, include=TRUE, warning=FALSE, fig.width=10, fig.height=7}
+```{r ari_plot_diss_2, fig.wide=TRUE, echo=FALSE, include=TRUE, warning=FALSE, fig.width=10, fig.height=7}
 dt_ari_cell_jitter <- copy(dt_cell_analysis)
 dt_ari_cell_jitter <- dt_ari_cell_jitter %>% .[, c("cells", "melissa_ari", "melissa_rate_ari", "gmm_ari")] %>% setnames(c("cells", "melissa_ari", "melissa_rate_ari", "gmm_ari"), c("x", "Melissa", "Melissa Rate", "GMM")) %>% .[, x := as.factor(x)] %>% melt(variable.name = "Model", value.name = "y")
 p_ari_cell_jitter <- ari_jitter_plot(dt_ari_cell_jitter, x_lab = "Cells assayed", y_lab = "ARI", title = "")

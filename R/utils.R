@@ -8,6 +8,8 @@
 #'
 #' @return The logs-sum-exp value
 #'
+#' @author C.A.Kapourani \email{C.A.Kapourani@@ed.ac.uk}
+#'
 #' @references
 #' \url{https://hips.seas.harvard.edu/blog/2013/01/09/computing-log-sum-exp/}
 #'
@@ -50,7 +52,6 @@ init_design_matrix <- function(basis, X, coverage_ind){
 #'
 #' @description Given a list of observations, extract responses y
 #'
-#' @param basis Basis object.
 #' @param X Observations
 #' @param coverage_ind Which observations have coverage
 #'
@@ -88,6 +89,15 @@ extract_y <- function(X, coverage_ind){
 #'   the imputation performance. These data will not be seen from Melissa during
 #'   inference.
 #'
+#' @author C.A.Kapourani \email{C.A.Kapourani@@ed.ac.uk}
+#'
+#' @examples
+#' # Partition the synthetic data from Melissa package
+#' dt <- partition_dataset(melissa_encode_dt)
+#'
+#' @seealso \code{\link{create_melissa_data_obj}}, \code{\link{melissa}},
+#' \code{\link{filter_regions}}
+#'
 #' @export
 #'
 partition_dataset <- function(dt_obj, data_train_prcg = 0.5,
@@ -98,7 +108,7 @@ partition_dataset <- function(dt_obj, data_train_prcg = 0.5,
   train = test <- dt_obj$met
   N <- length(dt_obj$met)       # Number of cells
   M <- length(dt_obj$met[[1]])  # Number of genomic regions
-  for (n in 1:N) {     # Iterate over each cell
+  for (n in seq_len(N)) {     # Iterate over each cell
     if (!is_synth) { # If we have real data
       # Keep indices of genomic regions that have CpG coverage
       cov_gen_ind <- which(!is.na(dt_obj$met[[n]]))
@@ -118,7 +128,7 @@ partition_dataset <- function(dt_obj, data_train_prcg = 0.5,
     # Iterate over each covered genomic region
     for (m in train_ind) {
       # Will this sample be used fully for training
-      is_train <- rbinom(1, 1, data_train_prcg)
+      is_train <- stats::rbinom(1, 1, data_train_prcg)
       if (!is_train) {
         # Get fraction of CpGs covered
         pivot <- cpg_train_prcg * NROW(dt_obj$met[[n]][[m]])
@@ -129,11 +139,12 @@ partition_dataset <- function(dt_obj, data_train_prcg = 0.5,
     }
   }
   # Set the training data as the `met` element
-  dt_obj$met <- train;
+  dt_obj$met <- train
   # Set the test data as the `met_test` element
   dt_obj$met_test <- test
   return(dt_obj)
 }
+
 
 #' @title Impute/predict methylation states
 #'
@@ -154,15 +165,38 @@ partition_dataset <- function(dt_obj, data_train_prcg = 0.5,
 #'
 #' @importFrom BPRMeth eval_probit_function
 #'
+#' @author C.A.Kapourani \email{C.A.Kapourani@@ed.ac.uk}
+#'
+#' @examples
+#' # Extract synthetic data
+#' dt <- melissa_synth_dt
+#'
+#' # Partition to train and test set
+#' dt <- partition_dataset(dt)
+#'
+#' # Create basis object from BPRMeth package
+#' basis_obj <- BPRMeth::create_rbf_object(M = 3)
+#'
+#' # Run Melissa
+#' melissa_obj <- melissa(X = dt$met, K = 2, basis = basis_obj,
+#'    vb_max_iter = 10, vb_init_nstart = 1, vb_init_max_iter = 3,
+#'    is_parallel = FALSE, is_verbose = FALSE)
+#'
+#' imputation_obj <- impute_met_state(obj = melissa_obj, test = dt$met_test)
+#'
+#' @seealso \code{\link{create_melissa_data_obj}}, \code{\link{melissa}},
+#' \code{\link{filter_regions}}, \code{\link{eval_imputation_performance}},
+#' \code{\link{eval_cluster_performance}}
+#'
 #' @export
 impute_met_state <- function(obj, test, basis = NULL, is_predictive = TRUE,
-                              return_test = FALSE){
+                             return_test = FALSE){
   N         <- length(test)                      # Number of cells
   test_pred <- test                              # Copy test data
   act_obs   <- vector(mode = "list", length = N) # Keep actual CpG states
   pred_obs  <- vector(mode = "list", length = N) # Keep predicted CpG states
   # Iterate over each cell...
-  for (n in 1:N) {
+  for (n in seq_len(N)) {
     # Regions that have CpG observations for testing
     idx <- which(!is.na(test[[n]]))
     cell_act_obs  <- vector("list", length = length(idx))
@@ -176,7 +210,7 @@ impute_met_state <- function(obj, test, basis = NULL, is_predictive = TRUE,
         # If we use the predictive density for imputation
         if (is_predictive) {
           tmp_mixt <- vector("numeric", length = length(test[[n]][[m]][, 1]))
-          for (k in 1:K) {
+          for (k in seq_len(K)) {
             # Evalute profile from weighted predictive
             tmp_mixt <- tmp_mixt + obj$r_nk[n,k] *
               eval_probit_function(obj = obj$basis,
@@ -231,6 +265,35 @@ impute_met_state <- function(obj, test, basis = NULL, is_predictive = TRUE,
 #'   containing the AUC, F-measure, True Positive Rate (TPR) and False Positive
 #'   Rate (FPR), and Precision Recall (PR) curves.
 #'
+#' @author C.A.Kapourani \email{C.A.Kapourani@@ed.ac.uk}
+#'
+#' @examples
+#' # First take a subset of cells to efficiency
+#' # Extract synthetic data
+#' dt <- melissa_synth_dt
+#'
+#' # Partition to train and test set
+#' dt <- partition_dataset(dt)
+#'
+#' # Create basis object from BPRMeth package
+#' basis_obj <- BPRMeth::create_rbf_object(M = 3)
+#'
+#' # Run Melissa
+#' melissa_obj <- melissa(X = dt$met, K = 2, basis = basis_obj,
+#'    vb_max_iter = 10, vb_init_nstart = 1, vb_init_max_iter = 3,
+#'    is_parallel = FALSE, is_verbose = FALSE)
+#'
+#' imputation_obj <- impute_met_state(obj = melissa_obj, test = dt$met_test)
+#'
+#' melissa_obj <- eval_imputation_performance(obj = melissa_obj,
+#'                                            imputation_obj = imputation_obj)
+#'
+#' cat("AUC: ", melissa_obj$imputation$auc)
+#'
+#' @seealso \code{\link{create_melissa_data_obj}}, \code{\link{melissa}},
+#' \code{\link{filter_regions}}, \code{\link{eval_imputation_performance}},
+#' \code{\link{eval_cluster_performance}}
+#'
 #' @export
 #'
 eval_imputation_performance <- function(obj, imputation_obj) {
@@ -264,6 +327,32 @@ eval_imputation_performance <- function(obj, imputation_obj) {
 #' @return The `melissa` object, with an additional slot named `clustering`,
 #'   containing the ARI and clustering assignment error performance.
 #'
+#' @author C.A.Kapourani \email{C.A.Kapourani@@ed.ac.uk}
+#'
+#' @examples
+#' ## Extract synthetic data
+#' dt <- melissa_synth_dt
+#'
+#' # Partition to train and test set
+#' dt <- partition_dataset(dt)
+#'
+#' # Create basis object from BPRMeth package
+#' basis_obj <- BPRMeth::create_rbf_object(M = 3)
+#'
+#' # Run Melissa
+#' melissa_obj <- melissa(X = dt$met, K = 2, basis = basis_obj,
+#'    vb_max_iter = 10, vb_init_nstart = 1, vb_init_max_iter = 5,
+#'    is_parallel = FALSE, is_verbose = FALSE)
+#'
+#' # Compute cluster performance
+#' melissa_obj <- eval_cluster_performance(melissa_obj, dt$opts$C_true)
+#'
+#' cat("ARI: ", melissa_obj$clustering$ari)
+#'
+#' @seealso \code{\link{create_melissa_data_obj}}, \code{\link{melissa}},
+#'   \code{\link{filter_regions}}, \code{\link{eval_imputation_performance}},
+#'   \code{\link{eval_cluster_performance}}
+#'
 #' @export
 #'
 eval_cluster_performance <- function(obj, C_true) {
@@ -288,6 +377,8 @@ eval_cluster_performance <- function(obj, C_true) {
 #'
 #' @return The clustering assignment error
 #'
+#' @author C.A.Kapourani \email{C.A.Kapourani@@ed.ac.uk}
+#'
 cluster_error <- function(C_true, C_post){
   # Obtain the total number of objects
   N <- NROW(C_post)
@@ -310,6 +401,8 @@ cluster_error <- function(C_true, C_post){
 #' @param C_post Posterior responsibilities of predicted cluster assignemnts.
 #'
 #' @return The clustering ARI.
+#'
+#' @author C.A.Kapourani \email{C.A.Kapourani@@ed.ac.uk}
 #'
 cluster_ari <- function(C_true, C_post){
   # Obtain labels from 1-hot-encoding data
@@ -350,11 +443,11 @@ cluster_ari <- function(C_true, C_post){
     Lm <- Z2
   }else if (type == "vec") {
     # For each cluster k in previous Cluster
-    for (k in 1:length(unique(Z1))) {
+    for (k in seq_along(unique(Z1))) {
       # Find Max
       Max <- sum(Z1 == k & Z2 == k)/(.01 + sum(Z1 == k) + sum(Z2 == k))
       # For each cluster k in current Cluster
-      for (tempk in 1:length(unique(Z2))) {
+      for (tempk in seq_along(unique(Z2))) {
         # Check if the proportions are higher than Max
         if ( (sum(Z1 == k & Z2 == tempk)/(.01 + sum(Z1 == k) +
                                           sum(Z2 == tempk))) > Max) {
@@ -381,15 +474,15 @@ cluster_ari <- function(C_true, C_post){
 
   L1 <- matrix(0, ncol = K, nrow = N)
   Lm <- matrix(0, ncol = K, nrow = N)
-  for (k in 1:K) {
+  for (k in seq_len(K)) {
     cl_L1 <- which(L1_k == k)
     cl_Lm <- which(Lm_k == k)
     if (length(cl_L1) > 0) { L1[cl_L1, k] <- 1 }
     if (length(cl_Lm) > 0) { Lm[cl_Lm, k] <- 1 }
   }
 
-  for (k in 1:NCOL(L1)) {            # For each cluster k in L1 source
-    for (tempk in 1:NCOL(Lm)) {    # For each cluster k in Lm source
+  for (k in seq_along(NCOL(L1))) {  # For each cluster k in L1 source
+    for (tempk in seq_along(NCOL(Lm))) { # For each cluster k in Lm source
       Max <- sum(L1 == Lm)       # Matches between the cluster indices
       Lm_dummy <- Lm             # Keep the Lm indices in a dummy variable
       Lm_dummy[,k] = Lm[,tempk]  # Swap the incorrect indices
@@ -402,11 +495,6 @@ cluster_ari <- function(C_true, C_post){
           Z2[,,k] <- tmp[,,tempk]
           Z2[,,tempk] <- tmp[,,k]
         }
-        # Align model parameters using the new cluster indices
-        if (!is.null(params)) {
-          params <- align_params(obj = params, curr_label = k,
-                                 new_label = tempk)
-        }
       }
     }
   }
@@ -416,44 +504,67 @@ cluster_ari <- function(C_true, C_post){
 
 
 
-#' @title Filter regions by coverage
+#' @name filter_regions
+#' @rdname filter_regions
+#' @aliases filter_cpgs, melissa_filter
 #'
-#' @description Filter genomic regions that have low coverage within that
-#'   region. This step does not remove the region, it only sets NA to those
-#'   regions.
+#' @title Filtering process prior to running Melissa
+#'
+#' @description Fuctions for filter genomic regions due to (1) low CpG coverage,
+#'   (2) low coverage across cells, or (3) low mean methylation variability.
 #'
 #' @param obj Melissa data object.
 #' @param min_cpgcov Minimum CpG coverage for each genomic region.
+#' @param min_cell_cov_prcg Threshold on the proportion of cells that have
+#'   coverage for each region.
+#' @param min_var Minimum variability of mean methylation across cells, measured
+#'   in terms of standard deviation.
+#' @details The (1) `filter_by_cpg_coverage` function does not actually remove
+#'   the region, it only sets NA to those regions. The (2)
+#'   `filter_by_coverage_across_cells` function keeps regions from which we can
+#'   share information across cells. The (3) `filter_by_variability` function
+#'   keeps variable regions which are informative for cell subtype
+#'   identification.
 #'
-#' @return The same object with the regions that do not pass threshold set to
-#'   NA.
+#' @return The filtered Melissa data object
+#'
+#' @author C.A.Kapourani \email{C.A.Kapourani@@ed.ac.uk}
+#'
+#' @seealso \code{\link{melissa}}, \code{\link{create_melissa_data_obj}}
+#'
+NULL
+
+
+#' @rdname filter_regions
+#'
+#' @examples
+#' # Run on synthetic data from Melissa package
+#' filt_obj <- filter_by_cpg_coverage(melissa_encode_dt, min_cpgcov = 20)
 #'
 #' @export
+#'
 filter_by_cpg_coverage <- function(obj, min_cpgcov = 10) {
   # Consider only regions with enough CpG coverage, the rest are set to NA
   obj$met <- lapply(obj$met, function(x)
-    lapply(x, function(y){ if (NROW(y) < min_cpgcov) return(NA) else return(y) }))
+    lapply(x, function(y){if (NROW(y) < min_cpgcov) return(NA) else return(y)}))
   return(obj)
 }
 
 
-#' @title Filter regions by coverage across cells
+#' @rdname filter_regions
 #'
-#' @description Filter genomic regions that have no coverage across many cells.
-#'   This way we keep regions from which we can share information across cells.
-#'
-#' @param obj Melissa data object.
-#' @param min_cell_cov_prcg Threshold on the proportion of cells that have
-#'   coverage for each region.
-#'
-#' @return Melissa object without the filtered genomic regions.
+#' @examples
+#' # Run on synthetic data from Melissa package
+#' filt_obj <- filter_by_coverage_across_cells(melissa_encode_dt,
+#'                                             min_cell_cov_prcg = 0.7)
 #'
 #' @export
+#'
 filter_by_coverage_across_cells <- function(obj, min_cell_cov_prcg = 0.5) {
   N <- length(obj$met)      # Number of cells
   M <- length(obj$met[[1]]) # Number of genomic regions
   non_cov_reg <- vector(mode = "numeric")
-  for (m in 1:M) { # Iterate over each region
+  for (m in seq_len(M)) { # Iterate over each region
     # Number of cells covered in each region
     cov_cells <- length(which(!is.na(lapply(obj$met, "[[", m))))
     # If no coverage
@@ -466,47 +577,48 @@ filter_by_coverage_across_cells <- function(obj, min_cell_cov_prcg = 0.5) {
       }
     }
   }
-  obj$anno_region <- obj$anno_region[-non_cov_reg]  # Filter anno regions
-  for (n in 1:N) {                                  # Filter met data
+  if (!is.null(obj$anno_region)) {
+    obj$anno_region <- obj$anno_region[-non_cov_reg]  # Filter anno regions
+  }
+  for (n in seq_len(N)) {                             # Filter met data
     obj$met[[n]] <- obj$met[[n]][-non_cov_reg]
     obj$met[[n]] <- unname(obj$met[[n]])
   }
-  obj$met <- met
+  obj$met <- obj$met
   return(obj)
 }
 
 
-#' @title Filter regions by variability
+#' @rdname filter_regions
 #'
-#' @description Filter genomic regions that have low mean methylation variability
-#'   across cells; since they are not informative for cell subtype
-#'   identification.
-#'
-#' @param obj Melissa data object.
-#' @param min_cov Minimum variability of mean methylation across cells, measured
-#'   in terms of standard deviation.
-#'
-#' @return Melissa object without the filtered genomic regions.
+#' @examples
+#' # Run on synthetic data from Melissa package
+#' filt_obj <- filter_by_variability(melissa_encode_dt, min_var = 0.1)
 #'
 #' @export
-filter_by_variability <- function(obj, min_cov = 10) {
-  # NUmber of genomic regions
-  M <- NROW(obj$anno_region)
+#'
+filter_by_variability <- function(obj, min_var = 0.1) {
+  # Number of genomic regions
+  M <- length(obj$met[[1]])
   cell_region_sd <- vector("numeric", length = M)
-  for (m in 1:M) {
+  for (m in seq_len(M)) {
     # Extract all cell observations for specific region m
     tmp <- lapply(obj$met, "[[", m)
     # Keep only regions that have observations
     tmp <- tmp[!is.na(tmp)]
     if (length(tmp) == 0) { cell_region_sd[m] <- 0
     # Compute the standard deviation of region across cells
-    } else {cell_region_sd[m] <- sd(sapply(tmp, function(x) mean(x[,2]))) }
+    } else {
+      cell_region_sd[m] <- stats::sd(sapply(tmp, function(x) mean(x[,2])))
+    }
   }
   # Keep only highly varying genomic regions
-  ind <- which(cell_region_sd > min_cov)
+  ind <- which(cell_region_sd > min_var)
 
   # Subset according to methylation variability
-  obj$anno_region <- obj$anno_region[ind,]
+  if (!is.null(obj$anno_region)) {
+    obj$anno_region <- obj$anno_region[ind,]
+  }
   obj$met <- lapply(obj$met, function(x) x[ind])
   return(obj)
 }

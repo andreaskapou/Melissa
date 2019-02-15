@@ -18,3 +18,6 @@ The clustering ARI.
 \code{cluster_ari} computes the clustering performance in terms
   of the Adjusted Rand Index (ARI) metric.
 }
+\author{
+C.A.Kapourani \email{C.A.Kapourani@ed.ac.uk}
+}

@@ -10,8 +10,6 @@ extract_y(X, coverage_ind)
 \item{X}{Observations}
 
 \item{coverage_ind}{Which observations have coverage}
-
-\item{basis}{Basis object.}
 }
 \value{
 The design matrix H

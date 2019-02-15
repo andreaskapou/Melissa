@@ -29,3 +29,29 @@ Make predictions of missing methylation states, i.e. perfrom
   imputation using Melissa. This requires keepin a subset of data as a held
   out test set during Melissa inference.
 }
+\examples{
+# Extract synthetic data
+dt <- melissa_synth_dt
+
+# Partition to train and test set
+dt <- partition_dataset(dt)
+
+# Create basis object from BPRMeth package
+basis_obj <- BPRMeth::create_rbf_object(M = 3)
+
+# Run Melissa
+melissa_obj <- melissa(X = dt$met, K = 2, basis = basis_obj,
+   vb_max_iter = 10, vb_init_nstart = 1, vb_init_max_iter = 3,
+   is_parallel = FALSE, is_verbose = FALSE)
+
+imputation_obj <- impute_met_state(obj = melissa_obj, test = dt$met_test)
+
+}
+\seealso{
+\code{\link{create_melissa_data_obj}}, \code{\link{melissa}},
+\code{\link{filter_regions}}, \code{\link{eval_imputation_performance}},
+\code{\link{eval_cluster_performance}}
+}
+\author{
+C.A.Kapourani \email{C.A.Kapourani@ed.ac.uk}
+}

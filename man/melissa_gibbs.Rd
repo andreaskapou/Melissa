@@ -57,3 +57,6 @@ sample from the augmented BPR model.}
   Regression likelihood. Note that Gibbs sampling is really slow and we
   recommend using the VB implementation.
 }
+\author{
+C.A.Kapourani \email{C.A.Kapourani@ed.ac.uk}
+}

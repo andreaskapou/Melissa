@@ -7,7 +7,7 @@
 create_melissa_data_obj(met_dir, anno_file, chrom_size_file = NULL,
   chr_discarded = NULL, is_centre = FALSE, is_window = TRUE,
   upstream = -5000, downstream = 5000, cov = 5, sd_thresh = -1,
-  cores = NULL)
+  no_cores = NULL)
 }
 \arguments{
 \item{met_dir}{Directory of (binarised) methylation files, each file
@@ -45,6 +45,8 @@ must contain.}
 \item{sd_thresh}{Optional numeric defining the minimum standard deviation of
 the methylation change in a region. This is used to filter regions with no
 methylation variability.}
+
+\item{no_cores}{Number of cores to be used, default is max_no_cores - 1.}
 }
 \value{
 A \code{melissa_data_obj} object, with the following elements:
@@ -61,4 +63,28 @@ A \code{melissa_data_obj} object, with the following elements:
 \description{
 Wrapper function for creating methylation regions for all cells,
   which is the input object for Melissa prior to filtering.
+}
+\examples{
+\dontrun{
+# Met directory
+met_dir <- "name_of_met_dir"
+# Annotation file name
+anno_file <- "name_of_anno_file"
+
+obj <- create_melissa_data_obj(met_dir, anno_file)
+
+# Extract annotation regions
+met <- obj$met
+
+# Extract annotation regions
+anno <- obj$anno_region
+}
+
+}
+\seealso{
+\code{\link{binarise_files}}, \code{\link{melissa}},
+  \code{\link{filter_regions}}
+}
+\author{
+C.A.Kapourani \email{C.A.Kapourani@ed.ac.uk}
 }

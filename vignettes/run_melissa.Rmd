@@ -129,9 +129,8 @@ Whether or not a subset of the data was used as test set, the command for runnin
 set.seed(15)
 # Run Melissa with K = 4 clusters
 melissa_obj <- melissa(X = dt_obj$met, K = 4, basis = basis_obj,
-                       vb_max_iter = 50, vb_init_nstart = 1, 
-                       vb_init_max_iter = 5, is_parallel = TRUE, 
-                       no_cores = 3, is_verbose = TRUE)
+                       vb_max_iter = 30, vb_init_nstart = 1, 
+                       vb_init_max_iter = 5, is_parallel = FALSE)
 ```
 
 ### Output summary

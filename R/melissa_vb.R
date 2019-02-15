@@ -61,6 +61,25 @@
 #'
 #' @author C.A.Kapourani \email{C.A.Kapourani@@ed.ac.uk}
 #'
+#' @examples
+#' # Example of running Melissa on synthetic data
+#'
+#' # Create RBF basis object with 4 RBFs
+#' basis_obj <- BPRMeth::create_rbf_object(M = 4)
+#'
+#' set.seed(15)
+#' # Run Melissa
+#' melissa_obj <- melissa(X = melissa_synth_dt$met, K = 2, basis = basis_obj,
+#'    vb_max_iter = 10, vb_init_nstart = 1, vb_init_max_iter = 5,
+#'    is_parallel = FALSE, is_verbose = FALSE)
+#'
+#' # Extract mixing proportions
+#' print(melissa_obj$pi_k)
+#'
+#' @seealso \code{\link{create_melissa_data_obj}},
+#'   \code{\link{partition_dataset}}, \code{\link{plot_melissa_profiles}},
+#'   \code{\link[BPRMeth]{create_rbf_object}} \code{\link{filter_regions}}
+#'
 #' @export
 melissa <- function(X, K = 3, basis = NULL, delta_0 = NULL, w = NULL,
                     alpha_0 = .5, beta_0 = NULL, vb_max_iter = 300,
@@ -79,35 +98,35 @@ melissa <- function(X, K = 3, basis = NULL, delta_0 = NULL, w = NULL,
   D <- basis$M + 1       # Number of basis functions
 
   # Initialise Dirichlet prior
-  if (is.null(delta_0)) { delta_0 <- rep(.5, K) + rbeta(K, 1e-1, 1e1) }
+  if (is.null(delta_0)) { delta_0 <- rep(.5, K) + stats::rbeta(K, 1e-1, 1e1) }
 
   # Number of parallel cores
   no_cores <- BPRMeth:::.parallel_cores(no_cores = no_cores,
                                         is_parallel = is_parallel,
                                         max_cores = N)
   # List of genes with no coverage for each cell
-  region_ind <- lapply(X = 1:N, FUN = function(n) which(!is.na(X[[n]])))
+  region_ind <- lapply(X = seq_len(N), FUN = function(n) which(!is.na(X[[n]])))
   # List of cells with no coverage for each genomic region
-  cell_ind <- lapply(X = 1:M, FUN = function(m) which(!is.na(lapply(X, "[[", m))))
+  cell_ind <- lapply(X = seq_len(M), FUN = function(m) which(!is.na(lapply(X, "[[", m))))
   # Pre-compute the design matrices H for efficiency: each entry is a cell
-  if (is_parallel) { H <- parallel::mclapply(X = 1:N, FUN = function(n)
+  if (is_parallel) { H <- parallel::mclapply(X = seq_len(N), FUN = function(n)
     init_design_matrix(basis = basis, X = X[[n]], coverage_ind = region_ind[[n]]),
     mc.cores = no_cores)
-  }else {H <- lapply(X = 1:N, FUN = function(n)
+  }else {H <- lapply(X = seq_len(N), FUN = function(n)
     init_design_matrix(basis = basis, X = X[[n]], coverage_ind = region_ind[[n]]))
   }
   # Extract responses y_{n}
-  y <- lapply(X = 1:N, FUN = function(n) extract_y(X = X[[n]], coverage_ind = region_ind[[n]]))
+  y <- lapply(X = seq_len(N), FUN = function(n) extract_y(X = X[[n]], coverage_ind = region_ind[[n]]))
 
   # If no initial values
   if (is.null(w)) {
     # Infer MLE profiles for each cell and region
-    if (is_parallel) { w_mle <- parallel::mclapply(X = 1:N, FUN = function(n)
+    if (is_parallel) { w_mle <- parallel::mclapply(X = seq_len(N), FUN = function(n)
       BPRMeth::infer_profiles_mle(X = X[[n]][region_ind[[n]]], model = "bernoulli",
                                   basis = basis, H = H[[n]][region_ind[[n]]],
                                   lambda = .5, opt_itnmax = 15)$W,
       mc.cores = no_cores)
-    }else{w_mle <- lapply(X = 1:N, FUN = function(n)
+    }else{w_mle <- lapply(X = seq_len(N), FUN = function(n)
       BPRMeth::infer_profiles_mle(X = X[[n]][region_ind[[n]]], model = "bernoulli",
                                   basis = basis, H = H[[n]][region_ind[[n]]],
                                   lambda = .5, opt_itnmax = 15)$W)
@@ -115,7 +134,7 @@ melissa <- function(X, K = 3, basis = NULL, delta_0 = NULL, w = NULL,
     # Transform to long format to perform k-means
     W_tmp <- matrix(0, nrow = N, ncol = M * D)
     ww <- array(data = rnorm(M*D*N, 0, 0.01), dim = c(M, D, N))
-    for (n in 1:N) { # Iterate over each cell
+    for (n in seq_len(N)) { # Iterate over each cell
       # Store optimized w to an array object (genes x basis x cells)
       ww[region_ind[[n]],,n] <- w_mle[[n]]
       W_tmp[n, ] <- c(ww[,,n])
@@ -125,7 +144,7 @@ melissa <- function(X, K = 3, basis = NULL, delta_0 = NULL, w = NULL,
     # Run mini VB
     lb_prev <- -1e+120
     w <- array(data = 0, dim = c(M, D, K))
-    for (t in 1:vb_init_nstart) {
+    for (t in seq_len(vb_init_nstart)) {
       if (is_kmeans) {
         # Use Kmeans for initial clustering of cells
         cl <- stats::kmeans(W_tmp, K, nstart = 1)
@@ -133,7 +152,7 @@ melissa <- function(X, K = 3, basis = NULL, delta_0 = NULL, w = NULL,
         C_n <- cl$cluster
         # TODO: Check that k-means does not return empty clusters..
         # Sample randomly one point from each cluster as initial centre
-        for (k in 1:K) { w[, ,k] <- ww[, , sample(which(C_n == k), 1)] }
+        for (k in seq_len(K)) { w[, ,k] <- ww[, , sample(which(C_n == k), 1)] }
       }else{# Sample randomly data centers
         w <- array(data = ww[, ,sample(N, K)], dim = c(M, D, K))
       }
@@ -160,10 +179,10 @@ melissa <- function(X, K = 3, basis = NULL, delta_0 = NULL, w = NULL,
                        is_parallel = is_parallel, no_cores = no_cores,
                        is_verbose = is_verbose)
   # Add names to the estimated parameters for clarity
-  names(obj$delta) <- paste0("cluster", 1:K)
-  names(obj$pi_k) <- paste0("cluster", 1:K)
-  # colnames(obj$W) <- paste0("cluster", 1:K)
-  colnames(obj$r_nk) <- paste0("cluster", 1:K)
+  names(obj$delta) <- paste0("cluster", seq_len(K))
+  names(obj$pi_k) <- paste0("cluster", seq_len(K))
+  # colnames(obj$W) <- paste0("cluster", seq_len(K))
+  colnames(obj$r_nk) <- paste0("cluster", seq_len(K))
   # Get hard cluster assignments for each observation
   # TODO: What should I do with cells that have the same r_nk across clusters?
   obj$labels <- apply(X = obj$r_nk, MARGIN = 1,
@@ -201,7 +220,7 @@ melissa_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
 
   # Compute H_{n}'H_{n}
   HH = y_1 = y_0 <- vector(mode = "list", length = N)
-  for (n in 1:N) {
+  for (n in seq_len(N)) {
     HH[[n]] = y_1[[n]] = y_0[[n]] <- vector(mode = "list", length = M)
     HH[[n]] <- lapply(X = HH[[n]], FUN = function(x) x <- NA)
     y_1[[n]] <- lapply(X = y_1[[n]], FUN = function(x) x <- NA)
@@ -221,7 +240,7 @@ melissa_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
   # Mean for each cluster
   m_k <- w
   # Covariance of each cluster
-  S_k <- lapply(X = 1:K, function(k) lapply(X = 1:M,
+  S_k <- lapply(X = seq_len(K), function(k) lapply(X = seq_len(M),
                                         FUN = function(m) solve(diag(50, D))))
   # Scale of precision matrix
   if (is.null(beta_0)) { beta_0 <- sqrt(alpha_k[1]) }
@@ -230,11 +249,11 @@ melissa_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
   delta_k  <- delta_0
   # Expectation of log Dirichlet
   e_log_pi <- digamma(delta_k) - digamma(sum(delta_k))
-  mk_Sk    <- lapply(X = 1:M, FUN = function(m) lapply(X = 1:K,
+  mk_Sk    <- lapply(X = seq_len(M), FUN = function(m) lapply(X = seq_len(K),
                      FUN = function(k) tcrossprod(m_k[m,,k]) + S_k[[k]][[m]]))
   # Update \mu
   mu <- vector(mode = "list", length = N)
-  for (n in 1:N) {
+  for (n in seq_len(N)) {
     mu[[n]] <- vector(mode = "list", length = M)
     mu[[n]] <- lapply(X = mu[[n]], FUN = function(x) x <- NA)
     if (D == 1) {
@@ -246,12 +265,12 @@ melissa_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
     }
   }
   # Update E[z] and E[z^2]
-  E_z  <- lapply(X = 1:N, FUN = function(n) {
+  E_z  <- lapply(X = seq_len(N), FUN = function(n) {
     l <- E_z[[n]]; l[region_ind[[n]]] <- lapply(X = region_ind[[n]],
           FUN = function(m) .update_Ez(E_z = E_z[[n]][[m]], mu = mu[[n]][[m]],
                                        y_0 = y_0[[n]][[m]], y_1 = y_1[[n]][[m]])
           ); return(l)})
-  E_zz <- lapply(X = 1:N, FUN = function(n) {
+  E_zz <- lapply(X = seq_len(N), FUN = function(n) {
     l <- E_zz[[n]]; l[region_ind[[n]]] <- lapply(X = region_ind[[n]],
           FUN = function(m) 1 + mu[[n]][[m]] * E_z[[n]][[m]]); return(l)})
 
@@ -264,16 +283,16 @@ melissa_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
     # Variational E-Step
     ##-------------------------------
     if (is_parallel) {
-      for (k in 1:K) {
-        log_rho_nk[,k] <- e_log_pi[k] + unlist(parallel::mclapply(X = 1:N,
+      for (k in seq_len(K)) {
+        log_rho_nk[,k] <- e_log_pi[k] + unlist(parallel::mclapply(X = seq_len(N),
           function(n) sum(sapply(X = region_ind[[n]], function(m)
           -0.5*crossprod(E_zz[[n]][[m]]) + m_k[m,,k] %*% t(H[[n]][[m]]) %*%
           E_z[[n]][[m]] - 0.5*matrix.trace(HH[[n]][[m]] %*% mk_Sk[[m]][[k]]))),
           mc.cores = no_cores))
       }
     }else {
-      for (k in 1:K) {
-        log_rho_nk[,k] <- e_log_pi[k] + sapply(X = 1:N, function(n)
+      for (k in seq_len(K)) {
+        log_rho_nk[,k] <- e_log_pi[k] + sapply(X = seq_len(N), function(n)
           sum(sapply(X = region_ind[[n]], function(m)
           -0.5*crossprod(E_zz[[n]][[m]]) + m_k[m,,k] %*% t(H[[n]][[m]]) %*%
           E_z[[n]][[m]] - 0.5*matrix.trace(HH[[n]][[m]] %*% mk_Sk[[m]][[k]]))))
@@ -291,9 +310,9 @@ melissa_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
     pi_k <- (delta_0 + colSums(r_nk)) / (K * delta_0 + N)
 
     # Iterate over each cluster
-    for (k in 1:K) {
+    for (k in seq_len(K)) {
       if (is_parallel) {
-        tmp <- parallel::mclapply(X = 1:M, function(m) {
+        tmp <- parallel::mclapply(X = seq_len(M), function(m) {
           # Extract temporary objects
           tmp_HH <- lapply(HH, "[[", m)
           tmp_H  <- lapply(H, "[[", m)
@@ -310,7 +329,7 @@ melissa_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
           return(list(S_k = S_k, m_k = m_k, E_ww = E_ww))
         }, mc.cores = no_cores)
       } else{
-        tmp <- lapply(X = 1:M, function(m) {
+        tmp <- lapply(X = seq_len(M), function(m) {
           # Extract temporary objects
           tmp_HH <- lapply(HH, "[[", m)
           tmp_H  <- lapply(H, "[[", m)
@@ -346,11 +365,11 @@ melissa_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
     # If parallel mode
     if (is_parallel) {
       # Iterate over cells
-      tmp <- parallel::mclapply(X = 1:N, FUN = function(n) {
+      tmp <- parallel::mclapply(X = seq_len(N), FUN = function(n) {
         # Update \mu
         tmp_mu <- mu[[n]]
         tmp_mu[region_ind[[n]]] <- lapply(X = region_ind[[n]], FUN = function(m)
-          c(H[[n]][[m]] %*% rowSums(matrix(sapply(X = 1:K, FUN = function(k)
+          c(H[[n]][[m]] %*% rowSums(matrix(sapply(X = seq_len(K), FUN = function(k)
             r_nk[n,k]*m_k[m,,k]), ncol = K))))
         # Update E[z]
         tmp_E_z <- E_z[[n]]
@@ -366,11 +385,11 @@ melissa_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
       }, mc.cores = no_cores)
     } else {
       # Iterate over cells
-      tmp <- lapply(X = 1:N, FUN = function(n) {
+      tmp <- lapply(X = seq_len(N), FUN = function(n) {
         # Update \mu
         tmp_mu <- mu[[n]]
         tmp_mu[region_ind[[n]]] <- lapply(X = region_ind[[n]], FUN = function(m)
-          c(H[[n]][[m]] %*% rowSums(matrix(sapply(X = 1:K, FUN =
+          c(H[[n]][[m]] %*% rowSums(matrix(sapply(X = seq_len(K), FUN =
                                 function(k) r_nk[n,k]*m_k[m,,k]), ncol = K))))
         # Update E[z]
         tmp_E_z <- E_z[[n]]
@@ -398,7 +417,7 @@ melissa_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
     # e_log_pi <- colMeans(r_nk)
 
     # Compute mm^{T}+S
-    mk_Sk <- lapply(X = 1:M, FUN = function(m) lapply(X = 1:K,
+    mk_Sk <- lapply(X = seq_len(M), FUN = function(m) lapply(X = seq_len(K),
                     FUN = function(k) tcrossprod(m_k[m, , k]) + S_k[[k]][[m]]))
     ##-------------------------------
     # Variational lower bound
@@ -409,18 +428,18 @@ melissa_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
     if (i %% 10 == 0 | i == vb_max_iter) {
       if (is_parallel) {
         # TODO: Find a better way to not obtain Inf in the pnorm function
-        lb_pz_qz <- sum(unlist(parallel::mclapply(X = 1:N, FUN = function(n)
+        lb_pz_qz <- sum(unlist(parallel::mclapply(X = seq_len(N), FUN = function(n)
           sum(sapply(X = region_ind[[n]], FUN = function(m)
             0.5*crossprod(mu[[n]][[m]]) + sum(y[[n]][[m]] *
             log(1 - (pnorm(-mu[[n]][[m]]) - 1e-10) ) + (1 - y[[n]][[m]]) *
-            log(pnorm(-mu[[n]][[m]]) + 1e-10)) - 0.5*sum(sapply(X = 1:K, FUN =
+            log(pnorm(-mu[[n]][[m]]) + 1e-10)) - 0.5*sum(sapply(X = seq_len(K), FUN =
             function(k) r_nk[n,k] * matrix.trace(HH[[n]][[m]] %*% mk_Sk[[m]][[k]]) )))),
           mc.cores = no_cores)))
       }else {
-        lb_pz_qz <- sum(sapply(X = 1:N, FUN = function(n)
+        lb_pz_qz <- sum(sapply(X = seq_len(N), FUN = function(n)
           sum(sapply(X = region_ind[[n]], FUN = function(m) 0.5*crossprod(mu[[n]][[m]]) +
           sum(y[[n]][[m]] * log(1 - (pnorm(-mu[[n]][[m]]) - 1e-10) ) + (1 - y[[n]][[m]]) *
-          log(pnorm(-mu[[n]][[m]]) + 1e-10)) - 0.5*sum(sapply(X = 1:K, FUN = function(k)
+          log(pnorm(-mu[[n]][[m]]) + 1e-10)) - 0.5*sum(sapply(X = seq_len(K), FUN = function(k)
           r_nk[n,k] * matrix.trace(HH[[n]][[m]] %*% mk_Sk[[m]][[k]]) )) ))))
       }
       lb_p_w   <- sum(-0.5*M*D*log(2*pi) + 0.5*M*D*(digamma(alpha_k) -
@@ -433,8 +452,8 @@ melissa_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
       lb_q_c   <- sum(r_nk*log_r_nk)
       lb_q_pi  <- sum((delta_k - 1)*e_log_pi) + lgamma(sum(delta_k)) -
         sum(lgamma(delta_k))
-      lb_q_w   <- sum(sapply(X = 1:M, FUN = function(m)
-        sum(-0.5*log(sapply(X = 1:K, FUN = function(k) det(S_k[[k]][[m]]))) -
+      lb_q_w   <- sum(sapply(X = seq_len(M), FUN = function(m)
+        sum(-0.5*log(sapply(X = seq_len(K), FUN = function(k) det(S_k[[k]][[m]]))) -
               0.5*D*(1 + log(2*pi)))))
       lb_q_tau <- sum(-lgamma(alpha_k) + (alpha_k - 1)*digamma(alpha_k) +
                         log(beta_k) - alpha_k)

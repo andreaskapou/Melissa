@@ -20,3 +20,6 @@ The logs-sum-exp value
 \references{
 \url{https://hips.seas.harvard.edu/blog/2013/01/09/computing-log-sum-exp/}
 }
+\author{
+C.A.Kapourani \email{C.A.Kapourani@ed.ac.uk}
+}

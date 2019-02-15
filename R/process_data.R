@@ -8,16 +8,30 @@
 #' @param outdir Directory to store the output files for each cell with exactly
 #'   the same name. If NULL, then a directory called `binarised` inside `indir`
 #'   will be create by default.
-#' @param cores Number of cores to use for parallel processing. If NULL, no
+#' @param no_cores Number of cores to use for parallel processing. If NULL, no
 #'   parallel processing is used.
+#'
+#' @author C.A.Kapourani \email{C.A.Kapourani@@ed.ac.uk}
+#'
+#' @examples
+#' \dontrun{
+#' # Met directory
+#' met_dir <- "name_of_met_dir"
+#'
+#' binarise_files(met_dir)
+#' }
+#'
+#' @seealso \code{\link{create_melissa_data_obj}}, \code{\link{melissa}},
+#'   \code{\link{filter_regions}}
+#'
 #' @export
 #'
-binarise_files <- function(indir, outdir = NULL, cores = NULL) {
+binarise_files <- function(indir, outdir = NULL, no_cores = NULL) {
   # Whether or not to run on parallel mode
   is_parallel <- TRUE
-  if (is.null(cores)) {
+  if (is.null(no_cores)) {
     is_parallel <- FALSE
-    cores <- 1
+    no_cores <- 1
   }
   # The out directory will be inside `indir/binarised`
   if (is.null(outdir)) {
@@ -32,23 +46,25 @@ binarise_files <- function(indir, outdir = NULL, cores = NULL) {
   i <- 0 # FOR CMD check to pass
   # Parallelise processing
   if (is_parallel) {
-    doParallel::registerDoParallel(cores = cores)
-    invisible(foreach::foreach(i = 1:length(filenames)) %dopar% {
+    doParallel::registerDoParallel(no_cores = no_cores)
+    invisible(foreach::foreach(i = seq_along(filenames)) %dopar% {
       # Process each file
-      .process_bismark_file(filename = filenames[i], cores = cores)
+      .process_bismark_file(filename = filenames[i])
     })
     doParallel::stopImplicitCluster()
   }else {
-    for (i in 1:length(filenames)) {
+    for (i in seq_along(filenames)) {
       # Process each file
-      .process_bismark_file(filename = filenames[i], cores = cores)
+      .process_bismark_file(filename = filenames[i])
     }
   }
 }
 
 
 # Private function for reading and processing a coverage bismark file
-.process_bismark_file <- function(filename, cores) {
+.process_bismark_file <- function(filename) {
+  # So we can pass Build without NOTEs
+  rate = met_reads = unnmet_reads = chr <- NULL
   cell <- sub(".gz","", filename)
   outfile <- sprintf("%s", cell)
   if (file.exists(paste0(outfile, ".gz"))) {
@@ -77,7 +93,7 @@ binarise_files <- function(indir, outdir = NULL, cores = NULL) {
     # Save results
     data.table::fwrite(data, file = outfile, showProgress = FALSE,
                        verbose = FALSE, col.names = FALSE, sep = "\t")
-    system(sprintf("pigz -p %d -f %s", cores, outfile))
+    system(sprintf("gzip -f %s", outfile))
   }
 }
 
@@ -113,6 +129,7 @@ binarise_files <- function(indir, outdir = NULL, cores = NULL) {
 #' @param sd_thresh Optional numeric defining the minimum standard deviation of
 #'   the methylation change in a region. This is used to filter regions with no
 #'   methylation variability.
+#' @param no_cores Number of cores to be used, default is max_no_cores - 1.
 #'
 #' @return A \code{melissa_data_obj} object, with the following elements:
 #'   \itemize{ \item{ \code{met}: A list of elements of length N, where N are
@@ -125,9 +142,32 @@ binarise_files <- function(indir, outdir = NULL, cores = NULL) {
 #'   object.} \item {\code{opts}: A list with the parameters that were used for
 #'   creating the object. } }
 #'
+#' @author C.A.Kapourani \email{C.A.Kapourani@@ed.ac.uk}
+#'
+#' @examples
+#' \dontrun{
+#' # Met directory
+#' met_dir <- "name_of_met_dir"
+#' # Annotation file name
+#' anno_file <- "name_of_anno_file"
+#'
+#' obj <- create_melissa_data_obj(met_dir, anno_file)
+#'
+#' # Extract annotation regions
+#' met <- obj$met
+#'
+#' # Extract annotation regions
+#' anno <- obj$anno_region
+#' }
+#'
+#' @seealso \code{\link{binarise_files}}, \code{\link{melissa}},
+#'   \code{\link{filter_regions}}
+#'
+#' @export
+#'
 create_melissa_data_obj <- function(met_dir, anno_file, chrom_size_file = NULL,
     chr_discarded = NULL, is_centre = FALSE, is_window = TRUE, upstream = -5000,
-    downstream = 5000, cov = 5, sd_thresh = -1, cores = NULL) {
+    downstream = 5000, cov = 5, sd_thresh = -1, no_cores = NULL) {
 
   # Parameter options
   opts <- list()
@@ -150,7 +190,7 @@ create_melissa_data_obj <- function(met_dir, anno_file, chrom_size_file = NULL,
         is_anno_region = TRUE, delimiter = "\t")
 
   # Create methylation regions
-  if (is.null(cores)) {
+  if (is.null(no_cores)) {
     met <- lapply(X = opts$met_files, FUN = function(n){
       # Read scBS seq data
       met_dt <- BPRMeth::read_met(file = sprintf("zcat < %s/%s", met_dir, n),
@@ -163,7 +203,7 @@ create_melissa_data_obj <- function(met_dir, anno_file, chrom_size_file = NULL,
       return(res)
     })
   } else{
-    met <- parallel::mclapply(X = io$met_files, FUN = function(n){
+    met <- parallel::mclapply(X = opts$met_files, FUN = function(n){
       # Read scBS seq data
       met_dt <- BPRMeth::read_met(file = sprintf("zcat < %s/%s", met_dir, n),
                                   type = "sc_seq", strand_info = FALSE)
@@ -173,7 +213,7 @@ create_melissa_data_obj <- function(met_dir, anno_file, chrom_size_file = NULL,
                   ignore_strand = TRUE, filter_empty_region = FALSE)$met
       names(res) <- NULL
       return(res)
-    }, mc.cores = cores)
+    }, mc.cores = no_cores)
   }
 
   # Add cell names to list

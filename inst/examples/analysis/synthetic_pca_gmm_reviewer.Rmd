@@ -316,7 +316,7 @@ dev.off()
 
 
 # ARI performance cluster dissimilarity
-```{r ari_plot_diss, fig.wide=TRUE, echo=FALSE, include=TRUE, warning=FALSE, fig.width=10, fig.height=7}
+```{r ari_plot_diss_2, fig.wide=TRUE, echo=FALSE, include=TRUE, warning=FALSE, fig.width=10, fig.height=7}
 dt_ari_var_jitter <- copy(dt_var_analysis)
 dt_ari_var_jitter <- dt_ari_var_jitter %>% .[, c("cell_var", "melissa_ari", "melissa_rate_ari", "gmm_ari")] %>% setnames(c("cell_var", "melissa_ari", "melissa_rate_ari", "gmm_ari"), c("x", "Melissa", "Melissa Rate", "GMM")) %>% .[, x := as.factor(x)] %>% melt(variable.name = "Model", value.name = "y")
 p_ari_var_jitter <- ari_jitter_plot(dt_ari_var_jitter, x_lab = "Cluster dissimilarity", y_lab = "ARI", title = "")

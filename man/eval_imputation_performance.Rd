@@ -23,3 +23,35 @@ The `melissa` object, with an additional slot named `imputation`,
   computing imputation/clustering performance in terms of different metrics,
   such as AUC and precision recall curves.
 }
+\examples{
+# First take a subset of cells to efficiency
+# Extract synthetic data
+dt <- melissa_synth_dt
+
+# Partition to train and test set
+dt <- partition_dataset(dt)
+
+# Create basis object from BPRMeth package
+basis_obj <- BPRMeth::create_rbf_object(M = 3)
+
+# Run Melissa
+melissa_obj <- melissa(X = dt$met, K = 2, basis = basis_obj,
+   vb_max_iter = 10, vb_init_nstart = 1, vb_init_max_iter = 3,
+   is_parallel = FALSE, is_verbose = FALSE)
+
+imputation_obj <- impute_met_state(obj = melissa_obj, test = dt$met_test)
+
+melissa_obj <- eval_imputation_performance(obj = melissa_obj,
+                                           imputation_obj = imputation_obj)
+
+cat("AUC: ", melissa_obj$imputation$auc)
+
+}
+\seealso{
+\code{\link{create_melissa_data_obj}}, \code{\link{melissa}},
+\code{\link{filter_regions}}, \code{\link{eval_imputation_performance}},
+\code{\link{eval_cluster_performance}}
+}
+\author{
+C.A.Kapourani \email{C.A.Kapourani@ed.ac.uk}
+}

@@ -36,6 +36,8 @@
 #' @importFrom mvtnorm rmvnorm
 #' @importFrom utils txtProgressBar setTxtProgressBar
 #'
+#' @author C.A.Kapourani \email{C.A.Kapourani@@ed.ac.uk}
+#'
 #' @export
 melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
                           w_0_mean = NULL, w_0_cov = NULL, dir_a = rep(1, K),
@@ -73,7 +75,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
   NLL          <- vector(mode = "numeric", length = gibbs_nsim)
   NLL[1]       <- 1e+100
   H = y = z = V <- list()
-  for (k in 1:K) {
+  for (k in seq_len(K)) {
     H[[k]] <- vector("list", N) # List of concatenated design matrices
     y[[k]] <- vector("list", N) # List of observed methylation data
     z[[k]] <- vector("list", N) # List of auxiliary latent variables
@@ -88,12 +90,12 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
   w_draws <- array(data = 0, dim = c(gibbs_nsim - gibbs_burn_in, N, M , K))
 
   # List of genes with no coverage for each cell
-  region_ind <- lapply(X = 1:I, FUN = function(n) which(!is.na(x[[n]])))
+  region_ind <- lapply(X = seq_len(I), FUN = function(n) which(!is.na(x[[n]])))
   # Pre-compute the design matrices H for efficiency: each entry is a cell
-  if (is_parallel) { des_mat <- parallel::mclapply(X = 1:I, FUN = function(n)
+  if (is_parallel) { des_mat <- parallel::mclapply(X = seq_len(I), FUN = function(n)
     init_design_matrix(basis = basis, X = x[[n]], coverage_ind = region_ind[[n]]),
     mc.cores = no_cores)
-  }else {des_mat <- lapply(X = 1:I, FUN = function(n)
+  }else {des_mat <- lapply(X = seq_len(I), FUN = function(n)
     init_design_matrix(basis = basis, X = x[[n]], coverage_ind = region_ind[[n]]))
   }
 
@@ -124,9 +126,9 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
     empty_C <- vector("integer", K)
     ## ---------------------------------------------------------------
     # Compute weighted pdfs for each cluster
-    for (k in 1:K) {
+    for (k in seq_len(K)) {
       # Apply to each cell and only to regions with CpG coverage
-      w_pdf[, k] <- log(pi_k[k]) + vapply(X = 1:I, FUN = function(i)
+      w_pdf[, k] <- log(pi_k[k]) + vapply(X = seq_len(I), FUN = function(i)
         sum(vapply(X = region_ind[[i]], FUN = function(y)
           BPRMeth::bpr_log_likelihood(w = w[y, , k], X = x[[i]][[y]],
                                       H = des_mat[[i]][[y]], lambda = lambda,
@@ -143,7 +145,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
     ## -------------------------------------------------------------------
     # Draw mixture components for ith simulation
     # Sample one point from a Multinomial i.e. ~ Discrete
-    for (i in 1:I) { C[i, ] <- rmultinom(n = 1, size = 1, post_prob[i, ]) }
+    for (i in seq_len(I)) { C[i, ] <- rmultinom(n = 1, size = 1, post_prob[i, ]) }
     # ## -------------------------------------------------------------------
     # TODO: Should we keep all data
     if (t > gibbs_burn_in) { C_matrix <- C_matrix + C }
@@ -157,7 +159,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
 
     # Matrix to keep promoters with no CpG coverage
     empty_region <- matrix(0, nrow = N, ncol = K)
-    for (k in 1:K) {
+    for (k in seq_len(K)) {
       # Which cells are assigned to cluster k
       C_idx <- which(C[, k] == 1)
       # TODO: Handle cases when we have empty clusters...
@@ -170,7 +172,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
       if (!identical(C[, k], C_prev[, k])) {
         if (is_verbose) { message(t, ": Not identical in cluster ", k) }
         # Iterate over each promoter region
-        for (n in 1:N) {
+        for (n in seq_len(N)) {
           # Initialize empty vector for observed methylation data
           yy <- vector(mode = "integer")
           # Concatenate the nth promoter from all cells in cluster k
@@ -199,7 +201,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
           }
         }
       }
-      for (n in 1:N) {
+      for (n in seq_len(N)) {
         # In case we have no CpG data in this promoter
         if (is.vector(H[[k]][[n]])) { next }
         # Perform Gibbs sampling on the augmented BPR model
@@ -233,7 +235,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
         }else{
           ##-------------=============-=-=-=
           # TODO:: Should we run this twice to update the z parameter!!!
-          for (l in 1:3) {
+          for (l in seq_len(3)) {
             # Update Mean of z
             mu_z <- H[[k]][[n]] %*% w[n, , k]
             # Draw latent variable z from its full conditional: z | w, y, X
@@ -261,13 +263,13 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
 
     # For each empty promoter region, take the methyation profile of the
     # promoter regions that belong to another cluster
-    for (n in 1:N) {
+    for (n in seq_len(N)) {
       clust_empty_ind <- which(empty_region[n, ] == 1)
       # No empty promoter regions
       if (length(clust_empty_ind) == 0) { next }
       # Case that should never happen with the right preprocessing step
       else if (length(clust_empty_ind) == K) {
-        for (k in 1:K) { w[n, , k] <- c(rmvnorm(1, w_0_mean, w_0_cov)) }
+        for (k in seq_len(K)) { w[n, , k] <- c(rmvnorm(1, w_0_mean, w_0_cov)) }
       }else{
         # TODO: Perform a better imputation approach...
         cover_ind <- which(empty_region[n, ] == 0)
@@ -281,7 +283,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
 
     # Handle empty clusters
     dom_C <- which.max(Ci_k)
-    for (k in 1:K) {
+    for (k in seq_len(K)) {
       if (empty_C[k] == 1) { w[, , k] <- w[, , dom_C] }
     }
     C_prev <- C # Make current cluster indices same as previous
@@ -298,7 +300,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
   else {pi_post <- colMeans(pi_draws[gibbs_burn_in:gibbs_nsim, ]) }
   C_post <- C_matrix / (gibbs_nsim - gibbs_burn_in)
   w_post <- array(0, dim = c(N, M, K))
-  for (k in 1:K) { w_post[, , k] <- colSums(w_draws[, , , k]) /
+  for (k in seq_len(K)) { w_post[, , k] <- colSums(w_draws[, , , k]) /
     (gibbs_nsim - gibbs_burn_in)  }
 
   # Object to keep input data
@@ -332,7 +334,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
   if (is.null(w)) {
     ww <- array(data = rnorm(N*M*I, 0, 0.01), dim = c(N, M, I))
     w_init <- rep(0.5, M)
-    for (i in 1:I) {
+    for (i in seq_len(I)) {
       # Compute regression coefficients using MLE
       ww[reg_ind[[i]], ,i] <- BPRMeth::infer_profiles_mle(X = x[[i]][reg_ind[[i]]],
        model = "bernoulli", basis = basis, H = H[[i]][reg_ind[[i]]], w = w_init,
@@ -342,14 +344,14 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
 
     # Transform to long format to perform k-means
     W_opt <- matrix(0, nrow = I, ncol = N * M)
-    for (i in 1:I) { W_opt[i, ] <- as.vector(ww[,,i]) }
+    for (i in seq_len(I)) { W_opt[i, ] <- as.vector(ww[,,i]) }
     w <- array(data = 0, dim = c(N, M, K))
     NLL_prev <- 1e+120
     optimal_w = optimal_pi_k <- NULL
 
     # Run 'mini' EM algorithm to find optimal starting points
     if (is_parallel) {
-      em_res <- parallel::mclapply(X = 1:em_init_nstart, FUN = function(t){
+      em_res <- parallel::mclapply(X = seq_len(em_init_nstart), FUN = function(t){
         if (use_kmeans) {
           # Use Kmeans with random starts
           cl <- stats::kmeans(W_opt, K, nstart = 1)
@@ -357,7 +359,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
           C_n <- cl$cluster
           # TODO: Check that k-means does not return empty clusters..
           # Sample randomly one point from each cluster as initial centre
-          for (k in 1:K) { w[, ,k] <- ww[, , sample(which(C_n == k), 1)] }
+          for (k in seq_len(K)) { w[, ,k] <- ww[, , sample(which(C_n == k), 1)] }
           # Mixing proportions
           if (is.null(pi_k)) { pi_k <- as.vector(table(C_n) / I ) }
         }else{
@@ -375,7 +377,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
         return(em)
       }, mc.cores = no_cores)
     }else{
-      em_res <- lapply(X = 1:em_init_nstart, FUN = function(t){
+      em_res <- lapply(X = seq_len(em_init_nstart), FUN = function(t){
         if (use_kmeans) {
           # Use Kmeans with random starts
           cl <- stats::kmeans(W_opt, K, nstart = 1)
@@ -383,7 +385,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
           C_n <- cl$cluster
           # TODO: Check that k-means does not return empty clusters..
           # Sample randomly one point from each cluster as initial centre
-          for (k in 1:K) { w[, ,k] <- ww[, , sample(which(C_n == k), 1)] }
+          for (k in seq_len(K)) { w[, ,k] <- ww[, , sample(which(C_n == k), 1)] }
           # Mixing proportions
           if (is.null(pi_k)) { pi_k <- as.vector(table(C_n) / I ) }
         }else{
@@ -400,7 +402,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
         return(em)
       } )
     }
-    for (t in 1:em_init_nstart) {
+    for (t in seq_len(em_init_nstart)) {
       # Check if NLL is lower and keep the optimal params
       NLL_cur <- utils::tail(em_res[[t]]$NLL, n = 1)
       if (NLL_cur < NLL_prev) {
@@ -436,9 +438,9 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
                             post_prob, lambda){
     covered_ind <- which(!is.na(H))
     if (is.vector(w)) { w <- matrix(w, ncol = K) }
-    for (k in 1:K) {  # For each cluster k
+    for (k in seq_len(K)) {  # For each cluster k
       # TODO: How to handle empty regions???
-      w[, k] <- optim(par = w[, k], fn = BPRMeth::sum_weighted_bpr_lik,
+      w[, k] <- stats::optim(par = w[, k], fn = BPRMeth::sum_weighted_bpr_lik,
                       gr = BPRMeth::sum_weighted_bpr_grad,
                       method = opt_method, control = list(maxit = opt_itnmax),
                       X_list = x[covered_ind], H_list = H[covered_ind],
@@ -466,16 +468,16 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
   }
 
   # Run EM algorithm until convergence
-  for (t in 1:em_max_iter) {
+  for (t in seq_len(em_max_iter)) {
     # TODO: Handle empty clusters!!!
     # TODO: Handle empty clusters!!!
     ## ---------------------------------------------------------------
     # Compute weighted pdfs for each cluster
-    for (k in 1:K) {
+    for (k in seq_len(K)) {
       # Apply to each cell and only to regions with CpG coverage
-      w_pdf[, k] <- log(pi_k[k]) + vapply(X = 1:I, FUN = function(i)
+      w_pdf[, k] <- log(pi_k[k]) + vapply(X = seq_len(I), FUN = function(i)
         sum(vapply(X = reg_ind[[i]], FUN = function(y)
-          bpr_log_likelihood(w = w[y, , k], X = x[[i]][[y]],
+          BPRMeth::bpr_log_likelihood(w = w[y, , k], X = x[[i]][[y]],
                              H = H[[i]][[y]], lambda = lambda,
                              is_nll = FALSE),
           FUN.VALUE = numeric(1), USE.NAMES = FALSE)),
@@ -496,12 +498,12 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
     # If parallel mode is ON
     if (is_parallel) {
       # Parallel optimization for each region n
-      res_out <- foreach::"%dopar%"(obj = foreach::foreach(n = 1:N),
+      res_out <- foreach::"%dopar%"(obj = foreach::foreach(n = seq_len(N)),
                   ex  = {out <- optim_regions(x = lapply(x, "[[", n),
                               H = lapply(H, "[[", n), w = w[n, , ], K = K,
                               opt_method = opt_method, opt_itnmax = opt_itnmax,
                               post_prob = post_prob, lambda = lambda) })
-      for (k in 1:K) {
+      for (k in seq_len(K)) {
         tmp <- sapply(res_out, function(x) x[, k])
         if (is.matrix(tmp)) { w_tmp[, , k] <- t(tmp) }
         else {w_tmp[, 1, k] <- tmp }
@@ -509,12 +511,12 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
       w <- w_tmp
     }else{
       # Sequential optimization for each region n
-      res_out <- foreach::"%do%"(obj = foreach::foreach(n = 1:N),
+      res_out <- foreach::"%do%"(obj = foreach::foreach(n = seq_len(N)),
                    ex  = {out <- optim_regions(x = lapply(x, "[[", n),
                              H = lapply(H, "[[", n), w = w[n, , ], K = K,
                              opt_method = opt_method, opt_itnmax = opt_itnmax,
                              post_prob = post_prob, lambda = lambda) })
-      for (k in 1:K) {
+      for (k in seq_len(K)) {
         tmp <- sapply(res_out, function(x) x[, k])
         if (is.matrix(tmp)) { w_tmp[, , k] <- t(tmp) }
         else {w_tmp[, 1, k] <- tmp }

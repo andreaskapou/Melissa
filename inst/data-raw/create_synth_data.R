@@ -175,8 +175,8 @@ usethis::use_data(melissa_encode_dt, overwrite = TRUE)
 ###-----------------------------------
 set.seed(1)
 # Basis function profiles
-basis_prof <- create_rbf_object(M = 4)
+basis_prof <- create_rbf_object(M = 3)
 # Create synthetic data
-melissa_synth_dt <- generate_synth_data(basis = basis_prof, N = 100, M = 100,
-                                        K = 3, pi_k = c(.2,.4,.4))
+melissa_synth_dt <- generate_synth_data(basis = basis_prof, N = 50, M = 50,
+                                        K = 2, pi_k = c(.3,.7))
 usethis::use_data(melissa_synth_dt, overwrite = TRUE)

@@ -1,2 +1,3 @@
+^inst/examples$
 ^.*\.Rproj$
 ^\.Rproj\.user$
