@@ -24,7 +24,6 @@ Imports:
     ROCR,
     matrixcalc,
     clues,
-    purrr,
     ggplot2,
     doParallel,
     foreach,
@@ -34,7 +33,9 @@ Imports:
     mvtnorm,
     truncnorm,
     assertthat,
-    BiocStyle
+    BiocStyle,
+    stats,
+    utils
 Suggests: testthat,
     knitr,
     rmarkdown

@@ -32,6 +32,25 @@ This function plots the predictive distribution of the
   methylation profiles inferred using the Melissa model. Each colour
   corresponds to a different cluster.
 }
+\examples{
+# Extract synthetic data
+dt <- melissa_synth_dt
+
+# Create basis object from BPRMeth package
+basis_obj <- BPRMeth::create_rbf_object(M = 3)
+
+# Run Melissa
+melissa_obj <- melissa(X = dt$met, K = 2, basis = basis_obj, vb_max_iter = 10,
+   vb_init_nstart = 1, is_parallel = FALSE, is_verbose = FALSE)
+
+gg <- plot_melissa_profiles(melissa_obj, region = 10)
+
+}
+\seealso{
+\code{\link{create_melissa_data_obj}}, \code{\link{melissa}},
+\code{\link{filter_regions}}, \code{\link{eval_imputation_performance}},
+\code{\link{eval_cluster_performance}}
+}
 \author{
 C.A.Kapourani \email{C.A.Kapourani@ed.ac.uk}
 }

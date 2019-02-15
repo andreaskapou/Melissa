@@ -6,7 +6,7 @@
 #'   Regression likelihood. Note that Gibbs sampling is really slow and we
 #'   recommend using the VB implementation.
 #'
-#' @param x A list of length I, where I are the total number of cells. Each
+#' @param X A list of length I, where I are the total number of cells. Each
 #'   element of the list contains another list of length N, where N is the total
 #'   number of genomic regions. Each element of the inner list is an L x 2
 #'   matrix of observations, where 1st column contains the locations and the 2nd
@@ -30,6 +30,8 @@
 #' @param no_cores Number of cores to be used, default is max_no_cores - 1.
 #' @param is_verbose Logical, print results during EM iterations
 #'
+#' @return An object of class \code{melissa_gibbs}.
+#'
 #' @importFrom stats rmultinom rnorm
 #' @importFrom MCMCpack rdirichlet
 #' @importFrom truncnorm rtruncnorm
@@ -38,19 +40,37 @@
 #'
 #' @author C.A.Kapourani \email{C.A.Kapourani@@ed.ac.uk}
 #'
+#' @examples
+#' # Example of running Melissa Gibbs on synthetic data
+#'
+#' # Create RBF basis object with 4 RBFs
+#' basis_obj <- BPRMeth::create_rbf_object(M = 4)
+#'
+#' set.seed(15)
+#' # Run Melissa Gibbs
+#' melissa_obj <- melissa_gibbs(X = melissa_synth_dt$met, K = 2, basis = basis_obj,
+#'    gibbs_nsim = 10, gibbs_burn_in = 5, is_parallel = FALSE, is_verbose = FALSE)
+#'
+#' # Extract mixing proportions
+#' print(melissa_obj$pi_k)
+#'
+#' @seealso \code{\link{melissa}}, \code{\link{create_melissa_data_obj}},
+#'   \code{\link{partition_dataset}}, \code{\link[BPRMeth]{create_rbf_object}}
+#'   \code{\link{filter_regions}}
+#'
 #' @export
-melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
+melissa_gibbs <- function(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
                           w_0_mean = NULL, w_0_cov = NULL, dir_a = rep(1, K),
                           lambda = 1/2, gibbs_nsim = 1000, gibbs_burn_in = 200,
                           inner_gibbs = FALSE, gibbs_inner_nsim = 50,
                           is_parallel = TRUE, no_cores = NULL,
                           is_verbose = FALSE){
 
-  # Check that x is a list object
-  assertthat::assert_that(is.list(x))
-  assertthat::assert_that(is.list(x[[1]]))
-  I <- length(x)      # Extract number of cells
-  N <- length(x[[1]]) # Extract number of promoter regions
+  # Check that X is a list object
+  assertthat::assert_that(is.list(X))
+  assertthat::assert_that(is.list(X[[1]]))
+  I <- length(X)      # Extract number of cells
+  N <- length(X[[1]]) # Extract number of promoter regions
   # Number of parallel cores
   no_cores <- BPRMeth:::.parallel_cores(no_cores = no_cores,
                                         is_parallel = is_parallel,
@@ -90,13 +110,13 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
   w_draws <- array(data = 0, dim = c(gibbs_nsim - gibbs_burn_in, N, M , K))
 
   # List of genes with no coverage for each cell
-  region_ind <- lapply(X = seq_len(I), FUN = function(n) which(!is.na(x[[n]])))
+  region_ind <- lapply(X = seq_len(I), FUN = function(n) which(!is.na(X[[n]])))
   # Pre-compute the design matrices H for efficiency: each entry is a cell
   if (is_parallel) { des_mat <- parallel::mclapply(X = seq_len(I), FUN = function(n)
-    init_design_matrix(basis = basis, X = x[[n]], coverage_ind = region_ind[[n]]),
+    init_design_matrix(basis = basis, X = X[[n]], coverage_ind = region_ind[[n]]),
     mc.cores = no_cores)
   }else {des_mat <- lapply(X = seq_len(I), FUN = function(n)
-    init_design_matrix(basis = basis, X = x[[n]], coverage_ind = region_ind[[n]]))
+    init_design_matrix(basis = basis, X = X[[n]], coverage_ind = region_ind[[n]]))
   }
 
   # TODO: Initialize w in a sensible way via mini EM
@@ -106,7 +126,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
                                           is_parallel = is_parallel,
                                           max_cores = 5)
 
-    out <- .do_scEM_checks(x = x, H = des_mat, reg_ind = region_ind, K = K,
+    out <- .do_scEM_checks(X = X, H = des_mat, reg_ind = region_ind, K = K,
                            pi_k = NULL, w = w, basis = basis, lambda = lambda,
                            em_init_nstart = 2, em_init_max_iter = 10,
                            opt_itnmax = 15, init_opt_itnmax = 10,
@@ -130,7 +150,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
       # Apply to each cell and only to regions with CpG coverage
       w_pdf[, k] <- log(pi_k[k]) + vapply(X = seq_len(I), FUN = function(i)
         sum(vapply(X = region_ind[[i]], FUN = function(y)
-          BPRMeth::bpr_log_likelihood(w = w[y, , k], X = x[[i]][[y]],
+          BPRMeth::bpr_log_likelihood(w = w[y, , k], X = X[[i]][[y]],
                                       H = des_mat[[i]][[y]], lambda = lambda,
                                       is_nll = FALSE),
           FUN.VALUE = numeric(1), USE.NAMES = FALSE)),
@@ -188,7 +208,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
             H[[k]][[n]] <- tmp
             # Obtain the corresponding methylation levels
             for (cell in C_idx) {
-              obs <- x[[cell]][[n]]
+              obs <- X[[cell]][[n]]
               if (length(obs) > 1) { yy <- c(yy, obs[, 2]) }
             }
             # Precompute for faster computations
@@ -230,8 +250,8 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
             if (M == 1) { w_inner[tt, ] <- c(rnorm(n = 1, mean = Mu, sd = V[[k]][[n]])) }
             else {w_inner[tt, ] <- c(rmvnorm(n = 1, mean = Mu, sigma = V[[k]][[n]])) }
           }
-          if (M == 1) { w[n, , k] <- mean(w_inner[-(1:(gibbs_inner_nsim/2)), ]) }
-          else {w[n, , k] <- colMeans(w_inner[-(1:(gibbs_inner_nsim/2)), ]) }
+          if (M == 1) { w[n, , k] <- mean(w_inner[-(seq_len(gibbs_inner_nsim/2)), ]) }
+          else {w[n, , k] <- colMeans(w_inner[-(seq_len(gibbs_inner_nsim/2)), ]) }
         }else{
           ##-------------=============-=-=-=
           # TODO:: Should we run this twice to update the z parameter!!!
@@ -321,14 +341,14 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
 
 
 # Internal function to make all the appropriate type checks.
-.do_scEM_checks <- function(x, H, reg_ind, K, pi_k = NULL, w = NULL, basis,
+.do_scEM_checks <- function(X, H, reg_ind, K, pi_k = NULL, w = NULL, basis,
                             lambda = 1/6, use_kmeans = TRUE, em_init_nstart = 5,
                             em_init_max_iter = 10, epsilon_conv = 1e-04,
                             opt_method = "CG", opt_itnmax = 30,
                             init_opt_itnmax = 20, is_parallel = TRUE,
                             no_cores = NULL, is_verbose = TRUE){
-  I <- length(x)
-  N <- length(x[[1]])
+  I <- length(X)
+  N <- length(X[[1]])
   M <- basis$M + 1
 
   if (is.null(w)) {
@@ -336,7 +356,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
     w_init <- rep(0.5, M)
     for (i in seq_len(I)) {
       # Compute regression coefficients using MLE
-      ww[reg_ind[[i]], ,i] <- BPRMeth::infer_profiles_mle(X = x[[i]][reg_ind[[i]]],
+      ww[reg_ind[[i]], ,i] <- BPRMeth::infer_profiles_mle(X = X[[i]][reg_ind[[i]]],
        model = "bernoulli", basis = basis, H = H[[i]][reg_ind[[i]]], w = w_init,
        lambda = lambda, opt_method = opt_method, opt_itnmax = init_opt_itnmax,
        is_parallel = FALSE, no_cores = no_cores)$W
@@ -367,7 +387,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
           if (is.null(pi_k)) { pi_k <- rep(1/K, K) }
         }
         # Run mini EM
-        em <- .bprmeth_EM(x = x, H = H, reg_ind = reg_ind, K = K, pi_k = pi_k,
+        em <- .bprmeth_EM(X = X, H = H, reg_ind = reg_ind, K = K, pi_k = pi_k,
                           w = w, basis = basis, lambda = lambda,
                           em_max_iter = em_init_max_iter,
                           epsilon_conv = epsilon_conv, opt_method = opt_method,
@@ -393,7 +413,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
           if (is.null(pi_k)) { pi_k <- rep(1/K, K) }
         }
         # Run mini EM
-        em <- .bprmeth_EM(x = x, H = H, reg_ind = reg_ind, K = K, pi_k = pi_k,
+        em <- .bprmeth_EM(X = X, H = H, reg_ind = reg_ind, K = K, pi_k = pi_k,
                           w = w, basis = basis, lambda = lambda,
                           em_max_iter = em_init_max_iter,
                           epsilon_conv = epsilon_conv, opt_method = opt_method,
@@ -425,7 +445,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
 #
 # EM algorithm
 #
-.bprmeth_EM <- function(x, H, reg_ind, K = 2, pi_k, w, basis, lambda = 1/6,
+.bprmeth_EM <- function(X, H, reg_ind, K = 2, pi_k, w, basis, lambda = 1/6,
                         em_max_iter = 100, epsilon_conv = 1e-05,
                         opt_method = "CG", opt_itnmax = 50, is_parallel = TRUE,
                         no_cores = NULL, is_verbose = FALSE){
@@ -434,7 +454,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
   # Optimize a promoter regions across cells, which are weighted by the
   # responsibilities of belonging to each cluster.
   #
-  optim_regions <- function(x, H, w, K, opt_method = opt_method, opt_itnmax,
+  optim_regions <- function(X, H, w, K, opt_method = opt_method, opt_itnmax,
                             post_prob, lambda){
     covered_ind <- which(!is.na(H))
     if (is.vector(w)) { w <- matrix(w, ncol = K) }
@@ -443,15 +463,15 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
       w[, k] <- stats::optim(par = w[, k], fn = BPRMeth::sum_weighted_bpr_lik,
                       gr = BPRMeth::sum_weighted_bpr_grad,
                       method = opt_method, control = list(maxit = opt_itnmax),
-                      X_list = x[covered_ind], H_list = H[covered_ind],
+                      X_list = X[covered_ind], H_list = H[covered_ind],
                       r_nk = post_prob[covered_ind, k], lambda = lambda,
                       is_nll = TRUE)$par
     }
     return(w)
   }
 
-  I <- length(x)      # Number of cells
-  N <- length(x[[1]]) # Number of regions
+  I <- length(X)      # Number of cells
+  N <- length(X[[1]]) # Number of regions
   M <- basis$M + 1    # Number of basis functions
   NLL <- 1e+100       # Initialize and store NLL for each EM iteration
   n <- 0
@@ -477,7 +497,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
       # Apply to each cell and only to regions with CpG coverage
       w_pdf[, k] <- log(pi_k[k]) + vapply(X = seq_len(I), FUN = function(i)
         sum(vapply(X = reg_ind[[i]], FUN = function(y)
-          BPRMeth::bpr_log_likelihood(w = w[y, , k], X = x[[i]][[y]],
+          BPRMeth::bpr_log_likelihood(w = w[y, , k], X = X[[i]][[y]],
                              H = H[[i]][[y]], lambda = lambda,
                              is_nll = FALSE),
           FUN.VALUE = numeric(1), USE.NAMES = FALSE)),
@@ -499,7 +519,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
     if (is_parallel) {
       # Parallel optimization for each region n
       res_out <- foreach::"%dopar%"(obj = foreach::foreach(n = seq_len(N)),
-                  ex  = {out <- optim_regions(x = lapply(x, "[[", n),
+                  ex  = {out <- optim_regions(X = lapply(X, "[[", n),
                               H = lapply(H, "[[", n), w = w[n, , ], K = K,
                               opt_method = opt_method, opt_itnmax = opt_itnmax,
                               post_prob = post_prob, lambda = lambda) })
@@ -512,7 +532,7 @@ melissa_gibbs <- function(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
     }else{
       # Sequential optimization for each region n
       res_out <- foreach::"%do%"(obj = foreach::foreach(n = seq_len(N)),
-                   ex  = {out <- optim_regions(x = lapply(x, "[[", n),
+                   ex  = {out <- optim_regions(X = lapply(X, "[[", n),
                              H = lapply(H, "[[", n), w = w[n, , ], K = K,
                              opt_method = opt_method, opt_itnmax = opt_itnmax,
                              post_prob = post_prob, lambda = lambda) })

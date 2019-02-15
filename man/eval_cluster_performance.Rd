@@ -31,9 +31,8 @@ dt <- partition_dataset(dt)
 basis_obj <- BPRMeth::create_rbf_object(M = 3)
 
 # Run Melissa
-melissa_obj <- melissa(X = dt$met, K = 2, basis = basis_obj,
-   vb_max_iter = 10, vb_init_nstart = 1, vb_init_max_iter = 5,
-   is_parallel = FALSE, is_verbose = FALSE)
+melissa_obj <- melissa(X = dt$met, K = 2, basis = basis_obj, vb_max_iter = 10,
+  vb_init_nstart = 1, is_parallel = FALSE, is_verbose = FALSE)
 
 # Compute cluster performance
 melissa_obj <- eval_cluster_performance(melissa_obj, dt$opts$C_true)

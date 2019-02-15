@@ -11,6 +11,8 @@
 #' @param no_cores Number of cores to use for parallel processing. If NULL, no
 #'   parallel processing is used.
 #'
+#' @return No value is returned, the binarised data are stored in the outdir.
+#'
 #' @author C.A.Kapourani \email{C.A.Kapourani@@ed.ac.uk}
 #'
 #' @examples

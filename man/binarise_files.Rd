@@ -16,6 +16,9 @@ will be create by default.}
 \item{no_cores}{Number of cores to use for parallel processing. If NULL, no
 parallel processing is used.}
 }
+\value{
+No value is returned, the binarised data are stored in the outdir.
+}
 \description{
 Script for binarising CpG sites and formatting the coverage file
   so it can be directly used from the BPRMeth package. The format of each

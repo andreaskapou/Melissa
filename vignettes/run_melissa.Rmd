@@ -63,10 +63,12 @@ suppressPackageStartupMessages(library(Melissa)) # Load package
 dt_obj <- melissa_encode_dt   # Load synthetic data
 ```
 
-<!-- For computational efficiency, we will retain the first 50 genomic regions per cell. -->
+<!-- For computational efficiency, we will retain the first 50 cells. -->
 ```{r, eval=FALSE, echo=FALSE, include=FALSE}
 # For efficiency keep only the first 50 genomic regions
-dt_obj$met <- lapply(dt_obj$met, function(x) x[1:50])
+dt_obj$met <- dt_obj$met[1:50]
+dt_obj$opts$C_true <- dt_obj$opts$C_true[1:50,]
+#dt_obj$met <- lapply(dt_obj$met, function(x) x[1:50])
 ```
 
 
@@ -129,8 +131,7 @@ Whether or not a subset of the data was used as test set, the command for runnin
 set.seed(15)
 # Run Melissa with K = 4 clusters
 melissa_obj <- melissa(X = dt_obj$met, K = 4, basis = basis_obj,
-                       vb_max_iter = 30, vb_init_nstart = 1, 
-                       vb_init_max_iter = 5, is_parallel = FALSE)
+                       vb_max_iter = 20, vb_init_nstart = 1, is_parallel = FALSE)
 ```
 
 ### Output summary

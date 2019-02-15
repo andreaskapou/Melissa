@@ -156,6 +156,10 @@ melissa <- function(X, K = 3, basis = NULL, delta_0 = NULL, w = NULL,
       }else{# Sample randomly data centers
         w <- array(data = ww[, ,sample(N, K)], dim = c(M, D, K))
       }
+
+      # If only one restart, then break
+      if (vb_init_nstart == 1) { optimal_w <- w; break; }
+
       # Run mini-VB
       mini_vb <- melissa_inner(H = H, y = y, region_ind = region_ind,
                                cell_ind = cell_ind, K = K, basis = basis,

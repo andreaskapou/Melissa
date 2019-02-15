@@ -4,14 +4,14 @@
 \alias{melissa_gibbs}
 \title{Gibbs sampling algorithm for Melissa model}
 \usage{
-melissa_gibbs(x, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
+melissa_gibbs(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
   w_0_mean = NULL, w_0_cov = NULL, dir_a = rep(1, K), lambda = 1/2,
   gibbs_nsim = 1000, gibbs_burn_in = 200, inner_gibbs = FALSE,
   gibbs_inner_nsim = 50, is_parallel = TRUE, no_cores = NULL,
   is_verbose = FALSE)
 }
 \arguments{
-\item{x}{A list of length I, where I are the total number of cells. Each
+\item{X}{A list of length I, where I are the total number of cells. Each
 element of the list contains another list of length N, where N is the total
 number of genomic regions. Each element of the inner list is an L x 2
 matrix of observations, where 1st column contains the locations and the 2nd
@@ -50,12 +50,35 @@ sample from the augmented BPR model.}
 
 \item{is_verbose}{Logical, print results during EM iterations}
 }
+\value{
+An object of class \code{melissa_gibbs}.
+}
 \description{
 \code{melissa_gibbs} implements the Gibbs sampling algorithm
   for performing clustering of single cells based on their DNA methylation
   profiles, where the observation model is the Bernoulli distributed Probit
   Regression likelihood. Note that Gibbs sampling is really slow and we
   recommend using the VB implementation.
+}
+\examples{
+# Example of running Melissa Gibbs on synthetic data
+
+# Create RBF basis object with 4 RBFs
+basis_obj <- BPRMeth::create_rbf_object(M = 4)
+
+set.seed(15)
+# Run Melissa Gibbs
+melissa_obj <- melissa_gibbs(X = melissa_synth_dt$met, K = 2, basis = basis_obj,
+   gibbs_nsim = 10, gibbs_burn_in = 5, is_parallel = FALSE, is_verbose = FALSE)
+
+# Extract mixing proportions
+print(melissa_obj$pi_k)
+
+}
+\seealso{
+\code{\link{melissa}}, \code{\link{create_melissa_data_obj}},
+  \code{\link{partition_dataset}}, \code{\link[BPRMeth]{create_rbf_object}}
+  \code{\link{filter_regions}}
 }
 \author{
 C.A.Kapourani \email{C.A.Kapourani@ed.ac.uk}

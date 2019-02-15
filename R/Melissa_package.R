@@ -11,7 +11,7 @@
 #' @rawNamespace importFrom(magrittr,"%>%")
 #' @rawNamespace importFrom(data.table,":=")
 #' @rawNamespace importFrom(foreach, "%dopar%")
-#' @import GenomicRanges ggplot2
+#' @import GenomicRanges ggplot2 BiocStyle
 #' @importFrom stats pnorm dbinom dnorm
 #' @importFrom matrixcalc matrix.trace
 #' @importFrom cowplot plot_grid

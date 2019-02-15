@@ -178,9 +178,8 @@ partition_dataset <- function(dt_obj, data_train_prcg = 0.5,
 #' basis_obj <- BPRMeth::create_rbf_object(M = 3)
 #'
 #' # Run Melissa
-#' melissa_obj <- melissa(X = dt$met, K = 2, basis = basis_obj,
-#'    vb_max_iter = 10, vb_init_nstart = 1, vb_init_max_iter = 3,
-#'    is_parallel = FALSE, is_verbose = FALSE)
+#' melissa_obj <- melissa(X = dt$met, K = 2, basis = basis_obj, vb_max_iter = 10,
+#'    vb_init_nstart = 1, is_parallel = FALSE, is_verbose = FALSE)
 #'
 #' imputation_obj <- impute_met_state(obj = melissa_obj, test = dt$met_test)
 #'
@@ -279,9 +278,8 @@ impute_met_state <- function(obj, test, basis = NULL, is_predictive = TRUE,
 #' basis_obj <- BPRMeth::create_rbf_object(M = 3)
 #'
 #' # Run Melissa
-#' melissa_obj <- melissa(X = dt$met, K = 2, basis = basis_obj,
-#'    vb_max_iter = 10, vb_init_nstart = 1, vb_init_max_iter = 3,
-#'    is_parallel = FALSE, is_verbose = FALSE)
+#' melissa_obj <- melissa(X = dt$met, K = 2, basis = basis_obj, vb_max_iter = 10,
+#'   vb_init_nstart = 1, is_parallel = FALSE, is_verbose = FALSE)
 #'
 #' imputation_obj <- impute_met_state(obj = melissa_obj, test = dt$met_test)
 #'
@@ -340,9 +338,8 @@ eval_imputation_performance <- function(obj, imputation_obj) {
 #' basis_obj <- BPRMeth::create_rbf_object(M = 3)
 #'
 #' # Run Melissa
-#' melissa_obj <- melissa(X = dt$met, K = 2, basis = basis_obj,
-#'    vb_max_iter = 10, vb_init_nstart = 1, vb_init_max_iter = 5,
-#'    is_parallel = FALSE, is_verbose = FALSE)
+#' melissa_obj <- melissa(X = dt$met, K = 2, basis = basis_obj, vb_max_iter = 10,
+#'   vb_init_nstart = 1, is_parallel = FALSE, is_verbose = FALSE)
 #'
 #' # Compute cluster performance
 #' melissa_obj <- eval_cluster_performance(melissa_obj, dt$opts$C_true)
@@ -481,8 +478,8 @@ cluster_ari <- function(C_true, C_post){
     if (length(cl_Lm) > 0) { Lm[cl_Lm, k] <- 1 }
   }
 
-  for (k in seq_along(NCOL(L1))) {  # For each cluster k in L1 source
-    for (tempk in seq_along(NCOL(Lm))) { # For each cluster k in Lm source
+  for (k in seq_len(NCOL(L1))) {  # For each cluster k in L1 source
+    for (tempk in seq_len(NCOL(Lm))) { # For each cluster k in Lm source
       Max <- sum(L1 == Lm)       # Matches between the cluster indices
       Lm_dummy <- Lm             # Keep the Lm indices in a dummy variable
       Lm_dummy[,k] = Lm[,tempk]  # Swap the incorrect indices

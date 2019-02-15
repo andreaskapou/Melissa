@@ -177,6 +177,6 @@ set.seed(1)
 # Basis function profiles
 basis_prof <- create_rbf_object(M = 3)
 # Create synthetic data
-melissa_synth_dt <- generate_synth_data(basis = basis_prof, N = 50, M = 50,
+melissa_synth_dt <- generate_synth_data(basis = basis_prof, N = 20, M = 30,
                                         K = 2, pi_k = c(.3,.7))
 usethis::use_data(melissa_synth_dt, overwrite = TRUE)
