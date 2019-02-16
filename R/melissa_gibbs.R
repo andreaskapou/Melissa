@@ -55,8 +55,7 @@
 #' print(melissa_obj$pi_k)
 #'
 #' @seealso \code{\link{melissa}}, \code{\link{create_melissa_data_obj}},
-#'   \code{\link{partition_dataset}}, \code{\link[BPRMeth]{create_rbf_object}}
-#'   \code{\link{filter_regions}}
+#'   \code{\link{partition_dataset}}, \code{\link{filter_regions}}
 #'
 #' @export
 melissa_gibbs <- function(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,

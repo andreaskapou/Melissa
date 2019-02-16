@@ -78,7 +78,7 @@
 #'
 #' @seealso \code{\link{create_melissa_data_obj}},
 #'   \code{\link{partition_dataset}}, \code{\link{plot_melissa_profiles}},
-#'   \code{\link[BPRMeth]{create_rbf_object}} \code{\link{filter_regions}}
+#'   \code{\link{filter_regions}}
 #'
 #' @export
 melissa <- function(X, K = 3, basis = NULL, delta_0 = NULL, w = NULL,
