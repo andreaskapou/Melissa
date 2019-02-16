@@ -1,7 +1,7 @@
 Package: Melissa
 Type: Package
 Title: Bayesian clustering and imputationa of single cell methylomes
-Version: 0.99.1
+Version: 0.99.0
 Authors@R: person("C. A.", "Kapourani", email = "kapouranis.andreas@gmail.com",
                   role = c("aut", "cre"))
 Author: Chantriolnt-Andreas Kapourani [aut, cre]
