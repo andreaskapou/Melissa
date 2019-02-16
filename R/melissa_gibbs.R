@@ -4,7 +4,7 @@
 #'   for performing clustering of single cells based on their DNA methylation
 #'   profiles, where the observation model is the Bernoulli distributed Probit
 #'   Regression likelihood. Note that Gibbs sampling is really slow and we
-#'   recommend using the VB implementation.
+#'   recommend using the VB implementation: \code{\link{melissa}}.
 #'
 #' @param X A list of length I, where I are the total number of cells. Each
 #'   element of the list contains another list of length N, where N is the total
@@ -15,7 +15,8 @@
 #' @param pi_k Vector of length K, denoting the mixing proportions.
 #' @param w A N x M x K array, where each column contains the basis function
 #'   coefficients for the corresponding cluster.
-#' @param basis A 'basis' object. E.g. see \code{\link{create_rbf_object}}
+#' @param basis A 'basis' object. E.g. see create_rbf_object from BPRMeth
+#'   package
 #' @param w_0_mean The prior mean hyperparameter for w
 #' @param w_0_cov The prior covariance hyperparameter for w
 #' @param dir_a The Dirichlet concentration parameter, prior over pi_k

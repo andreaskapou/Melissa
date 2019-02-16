@@ -6,6 +6,10 @@
 #'
 #' @return Melissa main package documentation.
 #'
+#' @seealso \code{\link{melissa}}, \code{\link{create_melissa_data_obj}},
+#'   \code{\link{partition_dataset}}, \code{\link{plot_melissa_profiles}},
+#'   \code{\link{filter_regions}}
+#'
 #' @author C.A.Kapourani \email{kapouranis.andreas@@gmail.com}
 #'
 #' @rawNamespace importFrom(magrittr,"%>%")

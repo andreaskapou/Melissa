@@ -24,7 +24,8 @@ column contains the methylation level of the corresponding CpGs.}
 \item{w}{A N x M x K array, where each column contains the basis function
 coefficients for the corresponding cluster.}
 
-\item{basis}{A 'basis' object. E.g. see \code{\link{create_rbf_object}}}
+\item{basis}{A 'basis' object. E.g. see create_rbf_object from BPRMeth
+package}
 
 \item{w_0_mean}{The prior mean hyperparameter for w}
 
@@ -58,7 +59,7 @@ An object of class \code{melissa_gibbs}.
   for performing clustering of single cells based on their DNA methylation
   profiles, where the observation model is the Bernoulli distributed Probit
   Regression likelihood. Note that Gibbs sampling is really slow and we
-  recommend using the VB implementation.
+  recommend using the VB implementation: \code{\link{melissa}}.
 }
 \examples{
 # Example of running Melissa Gibbs on synthetic data
@@ -77,8 +78,7 @@ print(melissa_obj$pi_k)
 }
 \seealso{
 \code{\link{melissa}}, \code{\link{create_melissa_data_obj}},
-  \code{\link{partition_dataset}}, \code{\link[BPRMeth]{create_rbf_object}}
-  \code{\link{filter_regions}}
+  \code{\link{partition_dataset}}, \code{\link{filter_regions}}
 }
 \author{
 C.A.Kapourani \email{C.A.Kapourani@ed.ac.uk}

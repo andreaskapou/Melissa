@@ -1,5 +1,5 @@
 #' @name melissa
-#' @rdname melissa
+#' @rdname melissa_vb
 #' @aliases melissa_cluster, melissa_impute, melissa_vb
 #'
 #' @title Cluster and impute single cell methylomes using VB
@@ -16,8 +16,9 @@
 #'   contains the input observations x (i.e. CpG locations) and the 2nd columns
 #'   contains the corresponding methylation level.
 #' @param K Integer denoting the total number of clusters K.
-#' @param basis A 'basis' object. E.g. see \code{\link[BPRMeth]{create_basis}}.
-#'   If NULL, will an RBF object with 3 basis functions will be created.
+#' @param basis A 'basis' object. E.g. see create_basis function from BPRMeth
+#'   package. If NULL, will an RBF object with 3 basis functions will be
+#'   created.
 #' @param delta_0 Parameter vector of the Dirichlet prior on the mixing
 #'   proportions pi.
 #' @param w Optional, an Mx(D)xK array of the initial parameters, where first
