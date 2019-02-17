@@ -1,5 +1,7 @@
 # Melissa: Bayesian clustering and imputation of single cell methylomes
 
+[![DOI](https://zenodo.org/badge/119386989.svg)](https://zenodo.org/badge/latestdoi/119386989)
+
 New technologies enabling the measurement of DNA methylation at the single cell level are promising to revolutionise our understanding of epigenetic control of gene expression. Yet, intrinsic limitations of the technology result in very sparse coverage of CpG sites (around 5% to 20% coverage), effectively limiting the analysis repertoire to a semi-quantitative level.
 
 __Melissa__ (MEthyLation Inference for Single cell Analysis), is a Bayesian hierarchical method to quantify spatially-varying methylation profiles across genomic regions from single-cell bisulfite sequencing data (scBS-seq). Melissa clusters individual cells based on local methylation patterns, enabling the discovery of epigenetic diversities and commonalities among individual cells. The clustering also acts as an effective regularisation method for imputation of methylation on unassayed CpG sites, enabling transfer of information between individual cells. 
