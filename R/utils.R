@@ -19,6 +19,33 @@ log_sum_exp <- function(x) {
   return(log(sum(exp(x - offset))) + offset)
 }
 
+# @title Number of parallel cores
+#
+# @description Function for creating the number of parallel cores that will be
+#   used during EM.
+# @param no_cores Number of cores given as input
+# @param is_parallel Logical, did we require parallel computations
+# @param M Total number of sources
+#
+.parallel_cores <- function(no_cores=NULL, is_parallel=FALSE, max_cores = NULL){
+  if (is_parallel) { # If parallel mode is ON
+    # If number of cores is not given
+    if (is.null(no_cores)) { no_cores <- parallel::detectCores() - 1
+    } else{if (no_cores >= parallel::detectCores()) {
+      no_cores <- parallel::detectCores() - 1 }
+    }
+    if (is.na(no_cores)) { no_cores <- 2 }
+    if (!is.null(max_cores)) {
+      if (no_cores > max_cores) { no_cores <- max_cores }
+    }
+  }
+  return(no_cores)
+}
+
+
+## A general-purpose adder:
+.add_func <- function(x) Reduce(f = "+", x = x)
+
 
 
 #' @title Initialise design matrices
@@ -103,6 +130,9 @@ extract_y <- function(X, coverage_ind){
 partition_dataset <- function(dt_obj, data_train_prcg = 0.5,
                               region_train_prcg = 0.95, cpg_train_prcg = 0.5,
                               is_synth = FALSE){
+  assertthat::assert_that(data_train_prcg >= 0 & data_train_prcg <= 1)
+  assertthat::assert_that(region_train_prcg >= 0 & region_train_prcg <= 1)
+  assertthat::assert_that(cpg_train_prcg >= 0 & cpg_train_prcg <= 1)
   # If `met_test` element already exists, stop
   if (!is.null(dt_obj$met_test)) { stop("Stopping. Test data already exist!")}
   train = test <- dt_obj$met
@@ -114,7 +144,9 @@ partition_dataset <- function(dt_obj, data_train_prcg = 0.5,
       cov_gen_ind <- which(!is.na(dt_obj$met[[n]]))
       # Compute the number of those regions
       N_cov <- length(cov_gen_ind)
-      if (N_cov < 10) { message("Low genomic coverage..."); return(1) }
+      if (N_cov < 10) {
+        message("Low genomic coverage..."); return(1)
+      }
       pivot <- region_train_prcg * N_cov
       # These are the training data
       train_ind <- cov_gen_ind[sort(sample(N_cov, round(pivot)))]
@@ -541,9 +573,12 @@ NULL
 #' @export
 #'
 filter_by_cpg_coverage <- function(obj, min_cpgcov = 10) {
+  assertthat::assert_that(min_cpgcov >= 0)
   # Consider only regions with enough CpG coverage, the rest are set to NA
   obj$met <- lapply(obj$met, function(x)
-    lapply(x, function(y){if (NROW(y) < min_cpgcov) return(NA) else return(y)}))
+    lapply(x, function(y){
+      if (NROW(y) < min_cpgcov) return(NA) else return(y)
+      }))
   return(obj)
 }
 
@@ -558,6 +593,7 @@ filter_by_cpg_coverage <- function(obj, min_cpgcov = 10) {
 #' @export
 #'
 filter_by_coverage_across_cells <- function(obj, min_cell_cov_prcg = 0.5) {
+  assertthat::assert_that(min_cell_cov_prcg >= 0 & min_cell_cov_prcg <= 1)
   N <- length(obj$met)      # Number of cells
   M <- length(obj$met[[1]]) # Number of genomic regions
   non_cov_reg <- vector(mode = "numeric")
@@ -574,14 +610,16 @@ filter_by_coverage_across_cells <- function(obj, min_cell_cov_prcg = 0.5) {
       }
     }
   }
-  if (!is.null(obj$anno_region)) {
-    obj$anno_region <- obj$anno_region[-non_cov_reg]  # Filter anno regions
+  if (length(non_cov_reg) != 0) {
+    if (!is.null(obj$anno_region)) {
+      obj$anno_region <- obj$anno_region[-non_cov_reg]  # Filter anno regions
+    }
+    for (n in seq_len(N)) {                             # Filter met data
+      obj$met[[n]] <- obj$met[[n]][-non_cov_reg]
+      obj$met[[n]] <- unname(obj$met[[n]])
+    }
+    obj$met <- obj$met
   }
-  for (n in seq_len(N)) {                             # Filter met data
-    obj$met[[n]] <- obj$met[[n]][-non_cov_reg]
-    obj$met[[n]] <- unname(obj$met[[n]])
-  }
-  obj$met <- obj$met
   return(obj)
 }
 
@@ -595,6 +633,7 @@ filter_by_coverage_across_cells <- function(obj, min_cell_cov_prcg = 0.5) {
 #' @export
 #'
 filter_by_variability <- function(obj, min_var = 0.1) {
+  assertthat::assert_that(min_var >= 0)
   # Number of genomic regions
   M <- length(obj$met[[1]])
   cell_region_sd <- vector("numeric", length = M)
@@ -603,9 +642,9 @@ filter_by_variability <- function(obj, min_var = 0.1) {
     tmp <- lapply(obj$met, "[[", m)
     # Keep only regions that have observations
     tmp <- tmp[!is.na(tmp)]
-    if (length(tmp) == 0) { cell_region_sd[m] <- 0
-    # Compute the standard deviation of region across cells
-    } else {
+    if (length(tmp) == 0) {
+      cell_region_sd[m] <- 0
+    }else {# Compute the standard deviation of region across cells
       cell_region_sd[m] <- stats::sd(sapply(tmp, function(x) mean(x[,2])))
     }
   }

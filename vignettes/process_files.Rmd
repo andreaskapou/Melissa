@@ -69,6 +69,10 @@ library(Melissa)
 binarise_files(indir = "path")
 ```
 
+__Note__ that the new binarised files will not be compressed after the call to binarise. The user should compress the files using e.g. 
+```{r compress_files, eval=FALSE}
+gzip filenames
+```
 
 ## Create methylation regions
 Now we are ready to process the binarised input files and create methylation regions using functions from the `r Biocpkg("BPRMeth")` package. Briefly, the steps required to create this object are as follows. 

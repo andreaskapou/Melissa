@@ -3,7 +3,7 @@
 #' @description  \code{melissa_gibbs} implements the Gibbs sampling algorithm
 #'   for performing clustering of single cells based on their DNA methylation
 #'   profiles, where the observation model is the Bernoulli distributed Probit
-#'   Regression likelihood. Note that Gibbs sampling is really slow and we
+#'   Regression likelihood. NOTE: that Gibbs sampling is really slow and we
 #'   recommend using the VB implementation: \code{\link{melissa}}.
 #'
 #' @param X A list of length I, where I are the total number of cells. Each
@@ -72,15 +72,19 @@ melissa_gibbs <- function(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
   I <- length(X)      # Extract number of cells
   N <- length(X[[1]]) # Extract number of promoter regions
   # Number of parallel cores
-  no_cores <- BPRMeth:::.parallel_cores(no_cores = no_cores,
-                                        is_parallel = is_parallel,
-                                        max_cores = N)
+  no_cores <- .parallel_cores(no_cores = no_cores,
+                              is_parallel = is_parallel,
+                              max_cores = N)
   if (is.null(basis)) { basis <- BPRMeth::create_rbf_object(M = 3) }
   M <- basis$M + 1    # Number of coefficient parameters
 
   # Initialize priors over the parameters
-  if (is.null(w_0_mean)) { w_0_mean <- rep(0, M) }
-  if (is.null(w_0_cov)) { w_0_cov <- diag(4, M) }
+  if (is.null(w_0_mean)) {
+    w_0_mean <- rep(0, M)
+  }
+  if (is.null(w_0_cov)) {
+    w_0_cov <- diag(4, M)
+  }
   # Invert covariance matrix to get the precision matrix
   prec_0 <- solve(w_0_cov)
   # Compute product of prior mean and prior precision matrix
@@ -94,13 +98,8 @@ melissa_gibbs <- function(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
   C_matrix     <- matrix(0, nrow = I, ncol = K)  # Total mixture components
   NLL          <- vector(mode = "numeric", length = gibbs_nsim)
   NLL[1]       <- 1e+100
-  H = y = z = V <- list()
-  for (k in seq_len(K)) {
-    H[[k]] <- vector("list", N) # List of concatenated design matrices
-    y[[k]] <- vector("list", N) # List of observed methylation data
-    z[[k]] <- vector("list", N) # List of auxiliary latent variables
-    V[[k]] <- vector("list", N) # List of posterior variances
-  }
+  H = y = z = V <- lapply(seq_len(K), function(k) { vector("list", N) } )
+
   len_y <- matrix(0, nrow = K, ncol = N) # Total CpG observations per region
   sum_y <- matrix(0, nrow = K, ncol = N) # Total methylated CpGs per region
 
@@ -122,10 +121,6 @@ melissa_gibbs <- function(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
   # TODO: Initialize w in a sensible way via mini EM
   if (is.null(w)) {
     # Perform checks for initial parameter values
-    no_cores <- BPRMeth:::.parallel_cores(no_cores = no_cores,
-                                          is_parallel = is_parallel,
-                                          max_cores = 5)
-
     out <- .do_scEM_checks(X = X, H = des_mat, reg_ind = region_ind, K = K,
                            pi_k = NULL, w = w, basis = basis, lambda = lambda,
                            em_init_nstart = 2, em_init_max_iter = 10,
@@ -136,7 +131,9 @@ melissa_gibbs <- function(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
   }
   pi_draws[1, ] <- pi_k
 
-  if (is_verbose) { message("Starting Gibbs sampling...") }
+  if (is_verbose) {
+    message("Starting Gibbs sampling...")
+  }
   # Show progress bar
   pb <- txtProgressBar(min = 1, max = gibbs_nsim, style = 3)
   ##---------------------------------
@@ -165,15 +162,19 @@ melissa_gibbs <- function(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
     ## -------------------------------------------------------------------
     # Draw mixture components for ith simulation
     # Sample one point from a Multinomial i.e. ~ Discrete
-    for (i in seq_len(I)) { C[i, ] <- rmultinom(n = 1, size = 1, post_prob[i, ]) }
+    for (i in seq_len(I)) {
+      C[i, ] <- rmultinom(n = 1, size = 1, post_prob[i, ])
+    }
     # ## -------------------------------------------------------------------
     # TODO: Should we keep all data
-    if (t > gibbs_burn_in) { C_matrix <- C_matrix + C }
+    if (t > gibbs_burn_in) {
+      C_matrix <- C_matrix + C
+    }
 
     ## -------------------------------------------------------------------
     # Update mixing proportions using updated cluster component counts
     Ci_k <- colSums(C)
-    if (is_verbose) {cat("\r", Ci_k) }
+    if (is_verbose) {message("\r", Ci_k) }
     pi_k <- as.vector(MCMCpack::rdirichlet(n = 1, alpha = dir_a + Ci_k))
     pi_draws[t, ] <- pi_k
 
@@ -190,7 +191,9 @@ melissa_gibbs <- function(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
       }
       # Check if current clusters ids are not equal to previous ones
       if (!identical(C[, k], C_prev[, k])) {
-        if (is_verbose) { message(t, ": Not identical in cluster ", k) }
+        if (is_verbose) {
+          message(t, ": Not identical in cluster ", k)
+        }
         # Iterate over each promoter region
         for (n in seq_len(N)) {
           # Initialize empty vector for observed methylation data
@@ -209,7 +212,9 @@ melissa_gibbs <- function(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
             # Obtain the corresponding methylation levels
             for (cell in C_idx) {
               obs <- X[[cell]][[n]]
-              if (length(obs) > 1) { yy <- c(yy, obs[, 2]) }
+              if (length(obs) > 1) {
+                yy <- c(yy, obs[, 2])
+              }
             }
             # Precompute for faster computations
             len_y[k, n] <- length(yy)
@@ -247,11 +252,17 @@ melissa_gibbs <- function(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
             # Compute posterior mean of w
             Mu <- V[[k]][[n]] %*% (w_0_prec_0 + crossprod(H[[k]][[n]], z[[k]][[n]]))
             # Draw variable \w from its full conditional: \w | z, X
-            if (M == 1) { w_inner[tt, ] <- c(rnorm(n = 1, mean = Mu, sd = V[[k]][[n]])) }
-            else {w_inner[tt, ] <- c(rmvnorm(n = 1, mean = Mu, sigma = V[[k]][[n]])) }
+            if (M == 1) {
+              w_inner[tt, ] <- c(rnorm(n = 1, mean = Mu, sd = V[[k]][[n]]))
+            }else {
+              w_inner[tt, ] <- c(rmvnorm(n = 1, mean = Mu, sigma = V[[k]][[n]]))
+            }
           }
-          if (M == 1) { w[n, , k] <- mean(w_inner[-(seq_len(gibbs_inner_nsim/2)), ]) }
-          else {w[n, , k] <- colMeans(w_inner[-(seq_len(gibbs_inner_nsim/2)), ]) }
+          if (M == 1) {
+            w[n, , k] <- mean(w_inner[-(seq_len(gibbs_inner_nsim/2)), ])
+          }else {
+            w[n, , k] <- colMeans(w_inner[-(seq_len(gibbs_inner_nsim/2)), ])
+          }
         }else{
           ##-------------=============-=-=-=
           # TODO:: Should we run this twice to update the z parameter!!!
@@ -274,8 +285,11 @@ melissa_gibbs <- function(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
             # Compute posterior mean of w
             Mu <- V[[k]][[n]] %*% (w_0_prec_0 + crossprod(H[[k]][[n]], z[[k]][[n]]))
             # Draw variable \w from its full conditional: \w | z, X
-            if (M == 1) { w[n, , k] <- c(rnorm(n = 1, mean = Mu, sd = V[[k]][[n]])) }
-            else{w[n, , k] <- c(rmvnorm(n = 1, mean = Mu, sigma = V[[k]][[n]])) }
+            if (M == 1) {
+              w[n, , k] <- c(rnorm(n = 1, mean = Mu, sd = V[[k]][[n]]))
+            }else{
+              w[n, , k] <- c(rmvnorm(n = 1, mean = Mu, sigma = V[[k]][[n]]))
+            }
           }
         }
       }
@@ -286,10 +300,14 @@ melissa_gibbs <- function(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
     for (n in seq_len(N)) {
       clust_empty_ind <- which(empty_region[n, ] == 1)
       # No empty promoter regions
-      if (length(clust_empty_ind) == 0) { next }
+      if (length(clust_empty_ind) == 0) {
+        next
+      }
       # Case that should never happen with the right preprocessing step
       else if (length(clust_empty_ind) == K) {
-        for (k in seq_len(K)) { w[n, , k] <- c(rmvnorm(1, w_0_mean, w_0_cov)) }
+        for (k in seq_len(K)) {
+          w[n, , k] <- c(rmvnorm(1, w_0_mean, w_0_cov))
+        }
       }else{
         # TODO: Perform a better imputation approach...
         cover_ind <- which(empty_region[n, ] == 0)
@@ -304,10 +322,14 @@ melissa_gibbs <- function(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
     # Handle empty clusters
     dom_C <- which.max(Ci_k)
     for (k in seq_len(K)) {
-      if (empty_C[k] == 1) { w[, , k] <- w[, , dom_C] }
+      if (empty_C[k] == 1) {
+        w[, , k] <- w[, , dom_C]
+      }
     }
     C_prev <- C # Make current cluster indices same as previous
-    if (t > gibbs_burn_in) {w_draws[t - gibbs_burn_in, , ,] <- w}
+    if (t > gibbs_burn_in) {
+      w_draws[t - gibbs_burn_in, , ,] <- w
+    }
     setTxtProgressBar(pb,t)
   }
   close(pb)
@@ -316,12 +338,16 @@ melissa_gibbs <- function(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
   ##-----------------------------------------------
   if (is_verbose) { message("Computing summary statistics...") }
   # Compute summary statistics from Gibbs simulation
-  if (K == 1) { pi_post <- mean(pi_draws[gibbs_burn_in:gibbs_nsim, ]) }
-  else {pi_post <- colMeans(pi_draws[gibbs_burn_in:gibbs_nsim, ]) }
+  if (K == 1) {
+    pi_post <- mean(pi_draws[gibbs_burn_in:gibbs_nsim, ])
+  }else {
+    pi_post <- colMeans(pi_draws[gibbs_burn_in:gibbs_nsim, ])
+  }
   C_post <- C_matrix / (gibbs_nsim - gibbs_burn_in)
   w_post <- array(0, dim = c(N, M, K))
-  for (k in seq_len(K)) { w_post[, , k] <- colSums(w_draws[, , , k]) /
-    (gibbs_nsim - gibbs_burn_in)  }
+  for (k in seq_len(K)) {
+    w_post[, , k] <- colSums(w_draws[, , , k]) / (gibbs_nsim - gibbs_burn_in)
+  }
 
   # Object to keep input data
   dat <- list(K = K, N = N, I = I, M = M, basis = basis, dir_a = dir_a,
@@ -364,7 +390,9 @@ melissa_gibbs <- function(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
 
     # Transform to long format to perform k-means
     W_opt <- matrix(0, nrow = I, ncol = N * M)
-    for (i in seq_len(I)) { W_opt[i, ] <- as.vector(ww[,,i]) }
+    for (i in seq_len(I)) {
+      W_opt[i, ] <- as.vector(ww[,,i])
+    }
     w <- array(data = 0, dim = c(N, M, K))
     NLL_prev <- 1e+120
     optimal_w = optimal_pi_k <- NULL
@@ -379,20 +407,25 @@ melissa_gibbs <- function(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
           C_n <- cl$cluster
           # TODO: Check that k-means does not return empty clusters..
           # Sample randomly one point from each cluster as initial centre
-          for (k in seq_len(K)) { w[, ,k] <- ww[, , sample(which(C_n == k), 1)] }
+          for (k in seq_len(K)) {
+            w[, ,k] <- ww[, , sample(which(C_n == k), 1)]
+          }
           # Mixing proportions
-          if (is.null(pi_k)) { pi_k <- as.vector(table(C_n) / I ) }
+          if (is.null(pi_k)) {
+            pi_k <- as.vector(table(C_n) / I )
+          }
         }else{
           w <- array(data = ww[, ,sample(I, K)], dim = c(N, M, K))
-          if (is.null(pi_k)) { pi_k <- rep(1/K, K) }
+          if (is.null(pi_k)) {
+            pi_k <- rep(1/K, K)
+          }
         }
         # Run mini EM
         em <- .bprmeth_EM(X = X, H = H, reg_ind = reg_ind, K = K, pi_k = pi_k,
                           w = w, basis = basis, lambda = lambda,
                           em_max_iter = em_init_max_iter,
                           epsilon_conv = epsilon_conv, opt_method = opt_method,
-                          opt_itnmax = opt_itnmax, is_parallel = FALSE,
-                          no_cores = NULL, is_verbose = is_verbose)
+                          opt_itnmax = opt_itnmax, is_verbose = is_verbose)
 
         return(em)
       }, mc.cores = no_cores)
@@ -405,20 +438,25 @@ melissa_gibbs <- function(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
           C_n <- cl$cluster
           # TODO: Check that k-means does not return empty clusters..
           # Sample randomly one point from each cluster as initial centre
-          for (k in seq_len(K)) { w[, ,k] <- ww[, , sample(which(C_n == k), 1)] }
+          for (k in seq_len(K)) {
+            w[, ,k] <- ww[, , sample(which(C_n == k), 1)]
+          }
           # Mixing proportions
-          if (is.null(pi_k)) { pi_k <- as.vector(table(C_n) / I ) }
+          if (is.null(pi_k)) {
+            pi_k <- as.vector(table(C_n) / I )
+          }
         }else{
           w <- array(data = ww[, ,sample(I, K)], dim = c(N, M, K))
-          if (is.null(pi_k)) { pi_k <- rep(1/K, K) }
+          if (is.null(pi_k)) {
+            pi_k <- rep(1/K, K)
+          }
         }
         # Run mini EM
         em <- .bprmeth_EM(X = X, H = H, reg_ind = reg_ind, K = K, pi_k = pi_k,
                           w = w, basis = basis, lambda = lambda,
                           em_max_iter = em_init_max_iter,
                           epsilon_conv = epsilon_conv, opt_method = opt_method,
-                          opt_itnmax = opt_itnmax, is_parallel = FALSE,
-                          no_cores = NULL, is_verbose = is_verbose)
+                          opt_itnmax = opt_itnmax, is_verbose = is_verbose)
         return(em)
       } )
     }
@@ -433,7 +471,9 @@ melissa_gibbs <- function(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
       }
     }
   }
-  if (is.null(pi_k)) { optimal_pi_k <- rep(1 / K, K) }
+  if (is.null(pi_k)) {
+    optimal_pi_k <- rep(1 / K, K)
+  }
   if (length(w[1,,1]) != (basis$M + 1) ) {
     stop("Coefficient vector should be M+1, M: number of basis functions!")
   }
@@ -447,8 +487,7 @@ melissa_gibbs <- function(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
 #
 .bprmeth_EM <- function(X, H, reg_ind, K = 2, pi_k, w, basis, lambda = 1/6,
                         em_max_iter = 100, epsilon_conv = 1e-05,
-                        opt_method = "CG", opt_itnmax = 50, is_parallel = TRUE,
-                        no_cores = NULL, is_verbose = FALSE){
+                        opt_method = "CG", opt_itnmax = 50, is_verbose = FALSE){
 
   #
   # Optimize a promoter regions across cells, which are weighted by the
@@ -481,12 +520,6 @@ melissa_gibbs <- function(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
   post_prob <- matrix(0, nrow = I, ncol = K)  # Hold responsibilities
   w_tmp     <- array(data = 0, dim = c(N, M, K))
 
-  if (is_parallel) {
-    # Create cluster object
-    cl <- parallel::makeCluster(no_cores)
-    doParallel::registerDoParallel(cl)
-  }
-
   # Run EM algorithm until convergence
   for (t in seq_len(em_max_iter)) {
     # TODO: Handle empty clusters!!!
@@ -515,49 +548,38 @@ melissa_gibbs <- function(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
     # Update mixing proportions for each cluster
     pi_k <- I_k / I
     # Update basis function coefficient matrix w
-    # If parallel mode is ON
-    if (is_parallel) {
-      # Parallel optimization for each region n
-      res_out <- foreach::"%dopar%"(obj = foreach::foreach(n = seq_len(N)),
-                  ex  = {out <- optim_regions(X = lapply(X, "[[", n),
-                              H = lapply(H, "[[", n), w = w[n, , ], K = K,
-                              opt_method = opt_method, opt_itnmax = opt_itnmax,
-                              post_prob = post_prob, lambda = lambda) })
-      for (k in seq_len(K)) {
-        tmp <- sapply(res_out, function(x) x[, k])
-        if (is.matrix(tmp)) { w_tmp[, , k] <- t(tmp) }
-        else {w_tmp[, 1, k] <- tmp }
+    res_out <- lapply(seq_len(N), function(n)
+      optim_regions(X = lapply(X, "[[", n), H = lapply(H, "[[", n), w = w[n, , ],
+                    K = K, opt_method = opt_method, opt_itnmax = opt_itnmax,
+                    post_prob = post_prob, lambda = lambda))
+
+    for (k in seq_len(K)) {
+      tmp <- sapply(res_out, function(x) x[, k])
+      if (is.matrix(tmp)) {
+        w_tmp[, , k] <- t(tmp)
       }
-      w <- w_tmp
-    }else{
-      # Sequential optimization for each region n
-      res_out <- foreach::"%do%"(obj = foreach::foreach(n = seq_len(N)),
-                   ex  = {out <- optim_regions(X = lapply(X, "[[", n),
-                             H = lapply(H, "[[", n), w = w[n, , ], K = K,
-                             opt_method = opt_method, opt_itnmax = opt_itnmax,
-                             post_prob = post_prob, lambda = lambda) })
-      for (k in seq_len(K)) {
-        tmp <- sapply(res_out, function(x) x[, k])
-        if (is.matrix(tmp)) { w_tmp[, , k] <- t(tmp) }
-        else {w_tmp[, 1, k] <- tmp }
+      else {
+        w_tmp[, 1, k] <- tmp
       }
-      w <- w_tmp
     }
+    w <- w_tmp
 
     if (is_verbose) {
-      cat("\r", "It: ", t, "NLL:\t", NLL[t + 1], "\tDiff:\t",
-          NLL[t] - NLL[t + 1])
+      message("\r", "It: ", t, " NLL:\t", NLL[t + 1],
+              "\tDiff:\t", NLL[t] - NLL[t + 1])
     }
-    if (NLL[t + 1] > NLL[t]) { message("NLL increases!\n"); break; }
+    if (NLL[t + 1] > NLL[t]) {
+      message("NLL increases!\n"); break;
+    }
     # Check for convergence
-    if (NLL[t] - NLL[t + 1] < epsilon_conv) { break }
-  }
-  if (is_parallel) {
-    parallel::stopCluster(cl)
-    doParallel::stopImplicitCluster()
+    if (NLL[t] - NLL[t + 1] < epsilon_conv) {
+      break
+    }
   }
   # Check if EM converged in the given maximum iterations
-  if (t == em_max_iter) { warning("EM did not converge!\n") }
+  if (t == em_max_iter) {
+    warning("EM did not converge!\n")
+  }
   obj <- structure(list(K = K, N = N, w = w, pi_k = pi_k, lambda = lambda,
                         em_max_iter = em_max_iter, opt_method = opt_method,
                         opt_itnmax = opt_itnmax, NLL = NLL,

@@ -58,7 +58,7 @@ An object of class \code{melissa_gibbs}.
 \code{melissa_gibbs} implements the Gibbs sampling algorithm
   for performing clustering of single cells based on their DNA methylation
   profiles, where the observation model is the Bernoulli distributed Probit
-  Regression likelihood. Note that Gibbs sampling is really slow and we
+  Regression likelihood. NOTE: that Gibbs sampling is really slow and we
   recommend using the VB implementation: \code{\link{melissa}}.
 }
 \examples{

@@ -95,7 +95,9 @@ binarise_files <- function(indir, outdir = NULL, no_cores = NULL) {
     # Save results
     data.table::fwrite(data, file = outfile, showProgress = FALSE,
                        verbose = FALSE, col.names = FALSE, sep = "\t")
-    system(sprintf("gzip -f %s", outfile))
+    # Removing gz step, since it is not portable. The user needs to gzip files
+    # after running the binarise function.
+    # system(sprintf("gzip -f %s", outfile))
   }
 }
 

@@ -99,12 +99,14 @@ melissa <- function(X, K = 3, basis = NULL, delta_0 = NULL, w = NULL,
   D <- basis$M + 1       # Number of basis functions
 
   # Initialise Dirichlet prior
-  if (is.null(delta_0)) { delta_0 <- rep(.5, K) + stats::rbeta(K, 1e-1, 1e1) }
+  if (is.null(delta_0)) {
+    delta_0 <- rep(.5, K) + stats::rbeta(K, 1e-1, 1e1)
+  }
 
   # Number of parallel cores
-  no_cores <- BPRMeth:::.parallel_cores(no_cores = no_cores,
-                                        is_parallel = is_parallel,
-                                        max_cores = N)
+  no_cores <- .parallel_cores(no_cores = no_cores,
+                              is_parallel = is_parallel,
+                              max_cores = N)
   # List of genes with no coverage for each cell
   region_ind <- lapply(X = seq_len(N), FUN = function(n) which(!is.na(X[[n]])))
   # List of cells with no coverage for each genomic region
@@ -117,7 +119,8 @@ melissa <- function(X, K = 3, basis = NULL, delta_0 = NULL, w = NULL,
     init_design_matrix(basis = basis, X = X[[n]], coverage_ind = region_ind[[n]]))
   }
   # Extract responses y_{n}
-  y <- lapply(X = seq_len(N), FUN = function(n) extract_y(X = X[[n]], coverage_ind = region_ind[[n]]))
+  y <- lapply(X = seq_len(N), FUN = function(n)
+    extract_y(X = X[[n]], coverage_ind = region_ind[[n]]))
 
   # If no initial values
   if (is.null(w)) {
@@ -153,14 +156,17 @@ melissa <- function(X, K = 3, basis = NULL, delta_0 = NULL, w = NULL,
         C_n <- cl$cluster
         # TODO: Check that k-means does not return empty clusters..
         # Sample randomly one point from each cluster as initial centre
-        for (k in seq_len(K)) { w[, ,k] <- ww[, , sample(which(C_n == k), 1)] }
+        for (k in seq_len(K)) {
+          w[, ,k] <- ww[, , sample(which(C_n == k), 1)]
+        }
       }else{# Sample randomly data centers
         w <- array(data = ww[, ,sample(N, K)], dim = c(M, D, K))
       }
-
       # If only one restart, then break
-      if (vb_init_nstart == 1) { optimal_w <- w; break; }
-
+      if (vb_init_nstart == 1) {
+        optimal_w <- w
+        break
+      }
       # Run mini-VB
       mini_vb <- melissa_inner(H = H, y = y, region_ind = region_ind,
                                cell_ind = cell_ind, K = K, basis = basis,
@@ -173,7 +179,10 @@ melissa <- function(X, K = 3, basis = NULL, delta_0 = NULL, w = NULL,
       lb_cur <- utils::tail(mini_vb$lb, n = 1)
       # TODO: Best way to obtain initial params after mini-restarts
       # if (lb_cur > lb_prev) { optimal_w <- mini_vb$W; lb_prev <- lb_cur; }
-      if (lb_cur > lb_prev) { optimal_w <- w; lb_prev <- lb_cur; }
+      if (lb_cur > lb_prev) {
+        optimal_w <- w
+        lb_prev <- lb_cur
+      }
     }
   }
   # Run final VB
@@ -241,14 +250,16 @@ melissa_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
   E_z = E_zz <- y
 
   # Compute shape parameter of Gamma
-  alpha_k <- rep(alpha_0 + M*D/2, K)
+  alpha_k <- rep(alpha_0 + M * D / 2, K)
   # Mean for each cluster
   m_k <- w
   # Covariance of each cluster
   S_k <- lapply(X = seq_len(K), function(k) lapply(X = seq_len(M),
                                         FUN = function(m) solve(diag(50, D))))
   # Scale of precision matrix
-  if (is.null(beta_0)) { beta_0 <- sqrt(alpha_k[1]) }
+  if (is.null(beta_0)) {
+    beta_0 <- sqrt(alpha_k[1])
+  }
   beta_k   <- rep(beta_0, K)
   # Dirichlet parameter
   delta_k  <- delta_0
@@ -280,8 +291,9 @@ melissa_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
           FUN = function(m) 1 + mu[[n]][[m]] * E_z[[n]][[m]]); return(l)})
 
   # Show progress bar
-  if (is_verbose) { pb <- utils::txtProgressBar(min = 2, max = vb_max_iter,
-                                                style = 3) }
+  if (is_verbose) {
+    pb <- utils::txtProgressBar(min = 2, max = vb_max_iter, style = 3)
+  }
   # Run VB algorithm until convergence
   for (i in 2:vb_max_iter) {
     ##-------------------------------
@@ -324,10 +336,10 @@ melissa_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
           tmp_Ez <- lapply(E_z, "[[", m)
           # Update covariance for Gaussian
           S_k <- solve(diag(alpha_k[k]/beta_k[k] + 1e-7, D) +
-                    BPRMeth:::.add_func(lapply(X = cell_ind[[m]],
+                    .add_func(lapply(X = cell_ind[[m]],
                                       FUN = function(n) tmp_HH[[n]]*r_nk[n,k])))
           # Update mean for Gaussian
-          m_k <- S_k %*% BPRMeth:::.add_func(lapply(X = cell_ind[[m]],
+          m_k <- S_k %*% .add_func(lapply(X = cell_ind[[m]],
                     FUN = function(n) t(tmp_H[[n]]) %*% tmp_Ez[[n]]*r_nk[n,k]))
           # Compute E[w^Tw]
           E_ww <- crossprod(m_k) + matrixcalc::matrix.trace(S_k)
@@ -343,10 +355,10 @@ melissa_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
           # TODO: How to make this numerically stable?
           # Does the addition have strong effects?
           S_k <- solve(diag(alpha_k[k]/beta_k[k] + 1e-7, D) +
-                    BPRMeth:::.add_func(lapply(X = cell_ind[[m]],
+                    .add_func(lapply(X = cell_ind[[m]],
                                     FUN = function(n) tmp_HH[[n]]*r_nk[n,k])))
           # Update mean for Gaussian
-          m_k <- S_k %*% BPRMeth:::.add_func(lapply(X = cell_ind[[m]],
+          m_k <- S_k %*% .add_func(lapply(X = cell_ind[[m]],
                     FUN = function(n) t(tmp_H[[n]]) %*% tmp_Ez[[n]]*r_nk[n,k]))
           # Compute E[w^Tw]
           E_ww <- crossprod(m_k) + matrixcalc::matrix.trace(S_k)
@@ -364,7 +376,9 @@ melissa_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
       # Check beta parameter for numerical issues
       # if (is.nan(beta_k[k]) | is.na(beta_k[k]) ) { beta_k[k] <- 1e10}
       # TODO: Does this affect model penalisation??
-      if (beta_k[k] > 10*alpha_k[k]) { beta_k[k] <- 10*alpha_k[k] }
+      if (beta_k[k] > 10*alpha_k[k]) {
+        beta_k[k] <- 10*alpha_k[k]
+      }
     }
 
     # If parallel mode
@@ -471,20 +485,28 @@ melissa_inner <- function(H, y, region_ind, cell_ind, K, basis, w, delta_0,
         warning("Warning: Lower bound decreases!\n")
       }
       # Check for convergence
-      if (abs(LB[iter] - LB[iter - 1]) < epsilon_conv) { break }
+      if (abs(LB[iter] - LB[iter - 1]) < epsilon_conv) {
+        break
+      }
       # Show VB difference
       if (is_verbose) {
         if (i %% 50 == 0) {
-          cat("\r","It:\t",i,"\tLB:\t",LB[iter],"\tDiff:\t",
+          message("\r","It:\t",i,"\tLB:\t",LB[iter],"\tDiff:\t",
               LB[iter] - LB[iter - 1],"\n")
         }
       }
     }
     # Check if VB converged in the given maximum iterations
-    if (i == vb_max_iter) {warning("VB did not converge!\n")}
-    if (is_verbose) { utils::setTxtProgressBar(pb, i) }
+    if (i == vb_max_iter) {
+      warning("VB did not converge!\n")
+    }
+    if (is_verbose) {
+      utils::setTxtProgressBar(pb, i)
+    }
   }
-  if (is_verbose) { close(pb) }
+  if (is_verbose) {
+    close(pb)
+  }
 
   # Store the object
   obj <- structure(list(W = m_k, W_Sigma = S_k, r_nk = r_nk, delta = delta_k,
