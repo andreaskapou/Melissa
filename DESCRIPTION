@@ -4,8 +4,6 @@ Title: Bayesian clustering and imputationa of single cell methylomes
 Version: 0.99.5
 Authors@R: person("C. A.", "Kapourani", email = "kapouranis.andreas@gmail.com",
                   role = c("aut", "cre"))
-Author: Chantriolnt-Andreas Kapourani [aut, cre]
-Maintainer: Chantriolnt-Andreas Kapourani <kapouranis.andreas@gmail.com>
 Description: Melissa is a Baysian probabilistic model for jointly clustering and 
     imputing single cell methylomes. This is done by taking into account local 
     correlations via a Generalised Linear Model approach and global similarities
