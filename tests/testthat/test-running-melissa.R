@@ -2,22 +2,23 @@ context("Checking correct functionality of Melissa")
 
 test_that("Melissa runs and returns correct results", {
   set.seed(1)
-  dt <- melissa_synth_dt
+  obj <- melissa_synth_dt
   # Partition to train and test set
-  expect_error(partition_dataset(dt, data_train_prcg = 1.4))
-  expect_error(partition_dataset(dt, data_train_prcg = -1))
-  expect_error(partition_dataset(dt, region_train_prcg = 1.4))
-  expect_error(partition_dataset(dt, region_train_prcg = -1))
+  expect_error(partition_dataset(obj, data_train_prcg = 1.4))
+  expect_error(partition_dataset(obj, data_train_prcg = -1))
+  expect_error(partition_dataset(obj, data_train_prcg = -1))
+  expect_error(partition_dataset(obj, region_train_prcg = 1.4))
+  expect_error(partition_dataset(obj, region_train_prcg = -1))
 
-  dt <- partition_dataset(dt, data_train_prcg = 0.5, region_train_prcg = 0.95,
+  obj <- partition_dataset(obj, data_train_prcg = 0.5, region_train_prcg = 0.95,
                            cpg_train_prcg = 0.5, is_synth = FALSE)
-  expect_equal(NROW(dt$met[[1]][[1]]), 20)
-  expect_equal(NROW(dt$met[[1]][[12]]), 21)
+  expect_equal(NROW(obj$met[[1]][[1]]), 20)
+  expect_equal(NROW(obj$met[[1]][[12]]), 21)
 
   # Create basis object from BPRMeth package
   basis_obj <- BPRMeth::create_rbf_object(M = 3)
   # Run Melissa VB model
-  melissa_obj <- melissa(X = dt$met, K = 2, basis = basis_obj,
+  melissa_obj <- melissa(X = obj$met, K = 2, basis = basis_obj,
                          delta_0 = NULL, alpha_0 = 0.5, vb_max_iter = 5,
                          vb_init_nstart = 1, is_parallel = FALSE,
                          is_verbose = FALSE)
@@ -35,7 +36,7 @@ test_that("Melissa runs and returns correct results", {
   expect_gt(melissa_obj$lb[2], -3426.03)
 
   # Check imputation performance is correct
-  imputation_obj <- impute_met_state(obj = melissa_obj, test = dt$met_test)
+  imputation_obj <- impute_met_state(obj = melissa_obj, test = obj$met_test)
   expect_lt(imputation_obj$pred_obs[1], 0.515)
   expect_gt(imputation_obj$pred_obs[1], 0.514)
   expect_lt(melissa_obj$lb[2], -3426.022)
@@ -55,7 +56,7 @@ test_that("Melissa runs and returns correct results", {
 
 
   # Check the clustering performance is correct
-  melissa_obj <- eval_cluster_performance(melissa_obj, dt$opts$C_true)
+  melissa_obj <- eval_cluster_performance(melissa_obj, obj$opts$C_true)
 
   expect_lt(melissa_obj$clustering$ari, 1.00001)
   expect_gt(melissa_obj$clustering$ari, 0.99999)
@@ -66,7 +67,7 @@ test_that("Melissa runs and returns correct results", {
 
   ##
   # Test for Melissa Gibbs output
-  melissa_gibbs <- melissa_gibbs(X = dt$met, K = 2, basis = basis_obj,
+  melissa_gibbs <- melissa_gibbs(X = obj$met, K = 2, basis = basis_obj,
                                gibbs_nsim = 10, gibbs_burn_in = 5,
                                is_parallel = FALSE, is_verbose = FALSE)
 
