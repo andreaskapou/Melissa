@@ -10,18 +10,16 @@ test_that("Melissa runs and returns correct results", {
   expect_error(partition_dataset(obj, region_train_prcg = 1.4))
   expect_error(partition_dataset(obj, region_train_prcg = -1))
 
+  set.seed(1)
   obj <- partition_dataset(obj, data_train_prcg = 0.5, region_train_prcg = 0.95,
                            cpg_train_prcg = 0.5, is_synth = FALSE)
   expect_equal(NROW(obj$met[[1]][[1]]), 20)
   expect_equal(NROW(obj$met[[1]][[12]]), 21)
 
-  # Create basis object from BPRMeth package
-  basis_obj <- BPRMeth::create_rbf_object(M = 3)
   # Run Melissa VB model
-  melissa_obj <- melissa(X = obj$met, K = 2, basis = basis_obj,
-                         delta_0 = NULL, alpha_0 = 0.5, vb_max_iter = 5,
-                         vb_init_nstart = 1, is_parallel = FALSE,
-                         is_verbose = FALSE)
+  melissa_obj <- melissa(X = obj$met, K = 2, delta_0 = NULL, alpha_0 = 0.5,
+                         vb_max_iter = 5, vb_init_nstart = 1,
+                         is_parallel = FALSE, is_verbose = FALSE)
 
   # Check lots of parameters from Melissa output that match expectations
   expect_gt(melissa_obj$W[1,1,1], 1.13)
@@ -67,9 +65,9 @@ test_that("Melissa runs and returns correct results", {
 
   ##
   # Test for Melissa Gibbs output
-  melissa_gibbs <- melissa_gibbs(X = obj$met, K = 2, basis = basis_obj,
-                               gibbs_nsim = 10, gibbs_burn_in = 5,
-                               is_parallel = FALSE, is_verbose = FALSE)
+  melissa_gibbs <- melissa_gibbs(X = obj$met, K = 2, gibbs_nsim = 10,
+                                 gibbs_burn_in = 5, is_parallel = FALSE,
+                                 is_verbose = FALSE)
 
   expect_lt(melissa_gibbs$summary$pi[1], 0.668493)
   expect_gt(melissa_gibbs$summary$pi[1], 0.668492)
