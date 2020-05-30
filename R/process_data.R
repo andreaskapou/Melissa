@@ -89,21 +89,26 @@ binarise_files <- function(indir, outdir = NULL, format = 1, no_cores = NULL) {
 
     # Input format 1
     if (format == 1) {
+      if (NCOL(data) != 6) {
+        stop("Wrong file format, it should contain 6 columns!")
+      }
       colnames(data) <- c("chr","pos", "pos_end", "met_prcg",
                           "met_reads","unnmet_reads")
       data[,rate := round((met_reads/(met_reads + unnmet_reads)))] %>%
         .[,c("pos_end", "met_prcg", "met_reads","unnmet_reads") := NULL] %>%
         .[, chr := as.factor(sub("chr", "", chr))] %>%
         data.table::setkey(chr, pos)
-    } else if (format == 2) {
-      # Input format 2
+    } else if (format == 2) { # Input format 2
+      if (NCOL(data) != 5) {
+        stop("Wrong file format, it should contain 5 columns!")
+      }
       colnames(data) <- c("chr","pos", "met_prcg", "met_reads","unnmet_reads")
       data[,rate := round((met_reads/(met_reads + unnmet_reads)))] %>%
         .[,c("met_prcg","met_reads","unnmet_reads") := NULL] %>%
         .[, chr := as.factor(sub("chr", "", chr))] %>%
         data.table::setkey(chr, pos)
     } else {
-      stop ("File format currently not supported!")
+      stop("File format currently not supported!")
     }
 
     # Sanity check
