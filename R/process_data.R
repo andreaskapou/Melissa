@@ -3,7 +3,8 @@
 #' @description Script for binarising CpG sites and formatting the coverage file
 #'   so it can be directly used from the BPRMeth package. The format of each
 #'   file is the following: <chr> <start> <met_level>, where met_level can be
-#'   either 0 or 1.
+#'   either 0 or 1. To read the .gz files, the R.utils package needs to be
+#'   installed.
 #' @param indir Directory containing the coverage files, output from Bismark.
 #' @param outdir Directory to store the output files for each cell with exactly
 #'   the same name. If NULL, then a directory called `binarised` inside `indir`
@@ -43,11 +44,14 @@ binarise_files <- function(indir, outdir = NULL, format = 1, no_cores = NULL) {
   if (is.null(outdir)) {
     outdir <- paste0(indir, "/binarised")
   }
-  # Create out directory if it doesn't exist
-  ifelse(!dir.exists(outdir), dir.create(outdir), FALSE)
 
   # Load cell filenames
-  filenames <- list.files(indir)
+  filenames <- setdiff(list.files(path = indir),
+                       list.dirs(path = indir, recursive = FALSE,
+                                 full.names = FALSE))
+
+  # Create out directory if it doesn't exist
+  ifelse(!dir.exists(outdir), dir.create(outdir), FALSE)
 
   i <- 0 # FOR CMD check to pass
   # Parallelise processing
@@ -62,15 +66,15 @@ binarise_files <- function(indir, outdir = NULL, format = 1, no_cores = NULL) {
   }else {
     for (i in seq_along(filenames)) {
       # Process each file
-      .process_bismark_file(filename = filenames[i], outdir = outdir,
-                            format = format)
+      .process_bismark_file(filename = filenames[i], indir = indir,
+                            outdir = outdir, format = format)
     }
   }
 }
 
 
 # Private function for reading and processing a coverage bismark file
-.process_bismark_file <- function(filename, outdir, format) {
+.process_bismark_file <- function(filename, indir, outdir, format) {
   # So we can pass Build without NOTEs
   rate = met_reads = unnmet_reads = chr <- NULL
   cell <- sub(".gz","", filename)
@@ -80,7 +84,7 @@ binarise_files <- function(indir, outdir = NULL, format = 1, no_cores = NULL) {
   } else {
     cat(sprintf("Processing %s...\n", cell))
     # Load data
-    data <- data.table::fread(cmd = sprintf("zcat < %s", filename),
+    data <- data.table::fread(file = sprintf("%s/%s", indir, filename),
                               verbose = FALSE, showProgress = FALSE)
 
     # Input format 1
