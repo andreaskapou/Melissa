@@ -8,6 +8,10 @@
 #' @param outdir Directory to store the output files for each cell with exactly
 #'   the same name. If NULL, then a directory called `binarised` inside `indir`
 #'   will be create by default.
+#' @param format Integer, denoting the format of coverage file. When set to `1`,
+#'   the coverage file format is assumed to be: "<chr> <start> <end> <met_prcg>
+#'   <met_reads> <unmet_reads>". When set to `2`, then the format is assumed to
+#'   be: "<chr> <start> <met_prcg> <met_reads> <unmet_reads>".
 #' @param no_cores Number of cores to use for parallel processing. If NULL, no
 #'   parallel processing is used.
 #'
@@ -28,7 +32,7 @@
 #'
 #' @export
 #'
-binarise_files <- function(indir, outdir = NULL, no_cores = NULL) {
+binarise_files <- function(indir, outdir = NULL, format = 1, no_cores = NULL) {
   # Whether or not to run on parallel mode
   is_parallel <- TRUE
   if (is.null(no_cores)) {
@@ -51,24 +55,26 @@ binarise_files <- function(indir, outdir = NULL, no_cores = NULL) {
     doParallel::registerDoParallel(no_cores = no_cores)
     invisible(foreach::foreach(i = seq_along(filenames)) %dopar% {
       # Process each file
-      .process_bismark_file(filename = filenames[i])
+      .process_bismark_file(filename = filenames[i], outdir = outdir,
+                            format = format)
     })
     doParallel::stopImplicitCluster()
   }else {
     for (i in seq_along(filenames)) {
       # Process each file
-      .process_bismark_file(filename = filenames[i])
+      .process_bismark_file(filename = filenames[i], outdir = outdir,
+                            format = format)
     }
   }
 }
 
 
 # Private function for reading and processing a coverage bismark file
-.process_bismark_file <- function(filename) {
+.process_bismark_file <- function(filename, outdir, format) {
   # So we can pass Build without NOTEs
   rate = met_reads = unnmet_reads = chr <- NULL
   cell <- sub(".gz","", filename)
-  outfile <- sprintf("%s", cell)
+  outfile <- sprintf("%s/%s", outdir, cell)
   if (file.exists(paste0(outfile, ".gz"))) {
     cat(sprintf("Sample %s already processed, skipping...\n", cell))
   } else {
@@ -76,12 +82,25 @@ binarise_files <- function(indir, outdir = NULL, no_cores = NULL) {
     # Load data
     data <- data.table::fread(cmd = sprintf("zcat < %s", filename),
                               verbose = FALSE, showProgress = FALSE)
-    # Input format 2 (chr,pos,met_prcg,met_reads,unnmet_reads)
-    colnames(data) <- c("chr","pos", "met_prcg", "met_reads","unnmet_reads")
-    data[,rate := round((met_reads/(met_reads + unnmet_reads)))] %>%
-      .[,c("met_prcg","met_reads","unnmet_reads") := NULL] %>%
-      .[, chr := as.factor(sub("chr", "", chr))] %>%
-      data.table::setkey(chr, pos)
+
+    # Input format 1
+    if (format == 1) {
+      colnames(data) <- c("chr","pos", "pos_end", "met_prcg",
+                          "met_reads","unnmet_reads")
+      data[,rate := round((met_reads/(met_reads + unnmet_reads)))] %>%
+        .[,c("pos_end", "met_prcg", "met_reads","unnmet_reads") := NULL] %>%
+        .[, chr := as.factor(sub("chr", "", chr))] %>%
+        data.table::setkey(chr, pos)
+    } else if (format == 2) {
+      # Input format 2
+      colnames(data) <- c("chr","pos", "met_prcg", "met_reads","unnmet_reads")
+      data[,rate := round((met_reads/(met_reads + unnmet_reads)))] %>%
+        .[,c("met_prcg","met_reads","unnmet_reads") := NULL] %>%
+        .[, chr := as.factor(sub("chr", "", chr))] %>%
+        data.table::setkey(chr, pos)
+    } else {
+      stop ("File format currently not supported!")
+    }
 
     # Sanity check
     tmp <- sum((max(data$rate) > 1) | (min(data$rate) < 0))
