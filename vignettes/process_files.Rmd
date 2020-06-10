@@ -62,14 +62,14 @@ where each row corresponds to an __observed__ CpG (i.e. we have at least one rea
 
 `<chr> <start> <met_level>`
 
-where `met_level` corresponds to the binary methylation state, either 0 or 1. We can do this by calling the `binarise_files` helper function, which only requires the input directory of the files and optionally the path to the output directory. Each file of the `indir` corresponds to a different cell and is required to be in `.gz` file format.
+where `met_level` corresponds to the binary methylation state, either 0 or 1. We can do this by calling the `binarise_files` helper function, which only requires the input directory of the files and optionally the path to the output directory. Each file of the `indir` corresponds to a different cell and it can also be compressed, e.g. in `.gz` file format, to save storage space.
 ```{r binarise, eval=FALSE}
 library(Melissa)
 # Binarise scBS-seq data
-binarise_files(indir = "path")
+binarise_files(indir = "path_to_met_files_dir")
 ```
 
-__Note__ that the new binarised files will not be compressed after the call to binarise. The user should compress the files using e.g. 
+__Note__ that the new binarised files will not be compressed, due to system commands not being portable inside the R package. To save storage space, the user could compress the files for instance in .gz file format by running in command line :
 ```{r compress_files, eval=FALSE}
 gzip filenames
 ```
@@ -83,8 +83,8 @@ Now we are ready to process the binarised input files and create methylation reg
 
 The `create_melissa_data_obj` is a wrapper function for doing all the above steps at once. __Note__ that this step is important so read carefully the purpose of all the parameters to obtain the right object for downstream analysis.
 ```{r melissa_data_obj, echo=TRUE, message=FALSE, eval=FALSE}
-melissa_data <- create_melissa_data_obj(met_dir = "path_to_met_dir",
-      anno_file = "anno_file", cov = 3)
+melissa_data <- create_melissa_data_obj(met_dir = "path_to_bin_met_dir",
+                                        anno_file = "anno_file", cov = 3)
 ```
 
 The `melissa_data$met` contains the methylation data whose structure is a list of length $N$ (number of cells), and each element of this list is another list of length $M$ (number of genomic regions). Each entry in the inner list is an $I\times 2$ matrix, where $I$ are the number of CpGs, where the 1st column contains the (relative) CpG locations and the 2nd column contains the methylation state: methylated or unmethylated.
@@ -200,7 +200,7 @@ sessionInfo()
 
 
 # Bibliography
-[1] Kapourani, C. A., & Sanguinetti, G. (2018). Melissa: Bayesian clustering and imputation of single cell methylomes. __bioRxiv__, 312025, DOI: [https://doi.org/10.1101/312025](https://doi.org/10.1101/312025)
+[1] Kapourani, C. A., & Sanguinetti, G. (2019). Melissa: Bayesian clustering and imputation of single cell methylomes. __Genome Biology__, 20(1), 61, DOI: [https://doi.org/10.1186/s13059-019-1665-8](https://doi.org/10.1186/s13059-019-1665-8)
 
 [2] Kapourani, C. A., & Sanguinetti, G. (2016). Higher order methylation features for clustering and prediction in epigenomic studies. __Bioinformatics__, 32(17), i405-i412, DOI: [https://doi.org/10.1093/bioinformatics/btw432](https://doi.org/10.1093/bioinformatics/btw432)
 
