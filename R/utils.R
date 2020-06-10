@@ -262,6 +262,7 @@ impute_test_met <- function(obj, test, basis = NULL,
         test_pred[[n]][[m]][,2] <- eval_probit_function(obj = basis,
                             obs = test[[n]][[m]][, 1], w = obj[m,,n])
       }
+      test_pred[[n]][[m]][,2] <- round(test_pred[[n]][[m]][,2], 3)
       # TODO
       # Actual CpG states
       cell_act_obs[[iter]]  <- test[[n]][[m]][, 2]
@@ -439,6 +440,7 @@ impute_met_files <- function(met_dir, outdir = NULL, obj, anno_region,
       met_region[[m]][,3] <- eval_probit_function(obj = basis,
                           obs = met_region[[m]][, 1], w = obj[m,,n])
     }
+    met_region[[m]][,3] <- round(met_region[[m]][,3], 3)
   }
   # Remove region names prior to merging the list
   names(met_region) <- NULL
