@@ -1,7 +1,7 @@
 Package: Melissa
 Type: Package
 Title: Bayesian clustering and imputationa of single cell methylomes
-Version: 1.5.0
+Version: 1.5.1
 Authors@R: person("C. A.", "Kapourani", email = "kapouranis.andreas@gmail.com",
                   role = c("aut", "cre"))
 Description: Melissa is a Baysian probabilistic model for jointly clustering and 
