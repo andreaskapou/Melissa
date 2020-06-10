@@ -4,10 +4,15 @@
 \alias{plot_melissa_profiles}
 \title{Plot predictive methylaation profiles}
 \usage{
-plot_melissa_profiles(melissa_obj, region = 1,
-  title = "Melissa profiles", x_axis = "genomic region",
-  y_axis = "met level", x_labels = c("Upstream", "", "Centre", "",
-  "Downstream"), ...)
+plot_melissa_profiles(
+  melissa_obj,
+  region = 1,
+  title = "Melissa profiles",
+  x_axis = "genomic region",
+  y_axis = "met level",
+  x_labels = c("Upstream", "", "Centre", "", "Downstream"),
+  ...
+)
 }
 \arguments{
 \item{melissa_obj}{Clustered cell subtypes using Melissa inference functions.}

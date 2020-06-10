@@ -4,10 +4,11 @@
 \name{Melissa}
 \alias{Melissa}
 \alias{.datatable.aware}
-\alias{Melissa-package}
 \title{\code{Melissa}: Bayesian clustering and imputation of single cell
   methylomes}
-\format{An object of class \code{logical} of length 1.}
+\format{
+An object of class \code{logical} of length 1.
+}
 \usage{
 .datatable.aware
 }

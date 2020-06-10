@@ -3,8 +3,8 @@
 #' @description Script for binarising CpG sites and formatting the coverage file
 #'   so it can be directly used from the BPRMeth package. The format of each
 #'   file is the following: <chr> <start> <met_level>, where met_level can be
-#'   either 0 or 1. To read the .gz files, the R.utils package needs to be
-#'   installed.
+#'   either 0 or 1. To read compressed files, e.g ending in .gz or .bz2, the
+#'   R.utils package needs to be installed.
 #' @param indir Directory containing the coverage files, output from Bismark.
 #' @param outdir Directory to store the output files for each cell with exactly
 #'   the same name. If NULL, then a directory called `binarised` inside `indir`
@@ -42,7 +42,7 @@ binarise_files <- function(indir, outdir = NULL, format = 1, no_cores = NULL) {
   }
   # The out directory will be inside `indir/binarised`
   if (is.null(outdir)) {
-    outdir <- paste0(indir, "/binarised")
+    outdir <- paste0(indir, "/binarised/")
   }
 
   # Load cell filenames
@@ -77,12 +77,17 @@ binarise_files <- function(indir, outdir = NULL, format = 1, no_cores = NULL) {
 .process_bismark_file <- function(filename, indir, outdir, format) {
   # So we can pass Build without NOTEs
   rate = met_reads = unnmet_reads = chr <- NULL
-  cell <- sub(".gz","", filename)
-  outfile <- sprintf("%s/%s", outdir, cell)
-  if (file.exists(paste0(outfile, ".gz"))) {
-    cat(sprintf("Sample %s already processed, skipping...\n", cell))
+  cell_id <- sub(".gz|.zip|.bz2|.rar|.7z","", filename)
+  outfile <- sprintf("%s/%s", outdir, cell_id)
+  if ( file.exists(paste0(outfile)) ||
+       file.exists(paste0(outfile, ".gz")) ||
+       file.exists(paste0(outfile, ".zip")) ||
+       file.exists(paste0(outfile, ".bz2")) ||
+       file.exists(paste0(outfile, ".rar")) ||
+       file.exists(paste0(outfile, ".7z"))) {
+    cat(sprintf("Sample %s already processed, skipping...\n", cell_id))
   } else {
-    cat(sprintf("Processing %s...\n", cell))
+    cat(sprintf("Processing %s...\n", cell_id))
     # Load data
     data <- data.table::fread(file = sprintf("%s/%s", indir, filename),
                               verbose = FALSE, showProgress = FALSE)
@@ -115,11 +120,11 @@ binarise_files <- function(indir, outdir = NULL, format = 1, no_cores = NULL) {
     tmp <- sum((max(data$rate) > 1) | (min(data$rate) < 0))
     if (tmp > 0) {
       cat(sprintf("%s: There are %d CpG sites that have
-                  methylation rate higher than 1 or lower than 0\n", cell, tmp))
+                  methylation rate > 1 or < 0\n", cell_id, tmp))
     }
     # Calculate binary methylation status
     cat(sprintf("%s: There are %0.03f%% of sites with non-binary methylation
-                rate\n", cell, mean(!data$rate %in% c(0,1))))
+                rate\n", cell_id, mean(!data$rate %in% c(0,1))))
     # Save results
     data.table::fwrite(data, file = outfile, showProgress = FALSE,
                        verbose = FALSE, col.names = FALSE, sep = "\t")
@@ -161,7 +166,7 @@ binarise_files <- function(indir, outdir = NULL, format = 1, no_cores = NULL) {
 #' @param sd_thresh Optional numeric defining the minimum standard deviation of
 #'   the methylation change in a region. This is used to filter regions with no
 #'   methylation variability.
-#' @param no_cores Number of cores to be used, default is max_no_cores - 1.
+#' @param no_cores Number of cores to be used for parallel processing of data.
 #'
 #' @return A \code{melissa_data_obj} object, with the following elements:
 #'   \itemize{ \item{ \code{met}: A list of elements of length N, where N are
@@ -203,8 +208,15 @@ create_melissa_data_obj <- function(met_dir, anno_file, chrom_size_file = NULL,
 
   # Parameter options
   opts <- list()
-  opts$met_files <- list.files(met_dir, pattern = "*.gz", full.names = FALSE)
-  opts$cell_names <- sapply(strsplit(opts$met_files, ".", fixed = TRUE), `[`, 1)
+  # Load cell filenames
+  opts$met_files <- setdiff(list.files(path = met_dir, full.names = FALSE),
+                            list.dirs(path = met_dir, recursive = FALSE,
+                                      full.names = FALSE))
+  opts$cell_id <- unname(sapply(opts$met_files, function(filename)
+    sub(".gz|.zip|.bz2|.rar|.7z", "", filename) ) )
+  # opts$met_files <- list.files(met_dir, pattern = "*.gz", full.names = FALSE)
+  # opts$cell_id <- opts$met_files
+  # opts$cell_id <- sapply(strsplit(opts$met_files,".", fixed = TRUE),`[`,1)
   opts$is_centre  <- is_centre   # Whether genomic region is already pre-centred
   opts$is_window  <- is_window   # Use predefined window region
   opts$upstream   <- upstream    # Upstream of centre
@@ -225,7 +237,7 @@ create_melissa_data_obj <- function(met_dir, anno_file, chrom_size_file = NULL,
   if (is.null(no_cores)) {
     met <- lapply(X = opts$met_files, FUN = function(n){
       # Read scBS seq data
-      met_dt <- BPRMeth::read_met(file = sprintf("zcat < %s/%s", met_dir, n),
+      met_dt <- BPRMeth::read_met(file = sprintf("%s/%s", met_dir, n),
                                   type = "sc_seq", strand_info = FALSE)
       # Create promoter methylation regions
       res <- BPRMeth::create_region_object(met_dt = met_dt, anno_dt = anno_region,
@@ -237,7 +249,7 @@ create_melissa_data_obj <- function(met_dir, anno_file, chrom_size_file = NULL,
   } else{
     met <- parallel::mclapply(X = opts$met_files, FUN = function(n){
       # Read scBS seq data
-      met_dt <- BPRMeth::read_met(file = sprintf("zcat < %s/%s", met_dir, n),
+      met_dt <- BPRMeth::read_met(file = sprintf("%s/%s", met_dir, n),
                                   type = "sc_seq", strand_info = FALSE)
       # Create promoter methylation regions
       res <- BPRMeth::create_region_object(met_dt = met_dt, anno_dt = anno_region,
@@ -248,8 +260,8 @@ create_melissa_data_obj <- function(met_dir, anno_file, chrom_size_file = NULL,
     }, mc.cores = no_cores)
   }
 
-  # Add cell names to list
-  names(met) <- opts$cell_names
+  # Add cell IDs to list
+  names(met) <- opts$cell_id
   # Store the object
   obj <- structure(list(met = met, anno_region = anno_region, opts = opts),
                    class = "melissa_data_obj")

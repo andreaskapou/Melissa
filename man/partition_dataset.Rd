@@ -4,8 +4,13 @@
 \alias{partition_dataset}
 \title{Partition synthetic dataset to training and test set}
 \usage{
-partition_dataset(dt_obj, data_train_prcg = 0.5,
-  region_train_prcg = 0.95, cpg_train_prcg = 0.5, is_synth = FALSE)
+partition_dataset(
+  dt_obj,
+  data_train_prcg = 0.5,
+  region_train_prcg = 0.95,
+  cpg_train_prcg = 0.5,
+  is_synth = FALSE
+)
 }
 \arguments{
 \item{dt_obj}{Melissa data object}

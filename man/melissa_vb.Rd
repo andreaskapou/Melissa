@@ -7,11 +7,23 @@
 \alias{melissa_vb}
 \title{Cluster and impute single cell methylomes using VB}
 \usage{
-melissa(X, K = 3, basis = NULL, delta_0 = NULL, w = NULL,
-  alpha_0 = 0.5, beta_0 = NULL, vb_max_iter = 300,
-  epsilon_conv = 1e-05, is_kmeans = TRUE, vb_init_nstart = 10,
-  vb_init_max_iter = 20, is_parallel = FALSE, no_cores = 3,
-  is_verbose = TRUE)
+melissa(
+  X,
+  K = 3,
+  basis = NULL,
+  delta_0 = NULL,
+  w = NULL,
+  alpha_0 = 0.5,
+  beta_0 = NULL,
+  vb_max_iter = 300,
+  epsilon_conv = 1e-05,
+  is_kmeans = TRUE,
+  vb_init_nstart = 10,
+  vb_init_max_iter = 20,
+  is_parallel = FALSE,
+  no_cores = 3,
+  is_verbose = TRUE
+)
 }
 \arguments{
 \item{X}{The input data, which has to be a \link[base]{list} of elements of
@@ -107,6 +119,7 @@ print(melissa_obj$pi_k)
 \seealso{
 \code{\link{create_melissa_data_obj}},
   \code{\link{partition_dataset}}, \code{\link{plot_melissa_profiles}},
+  \code{\link{impute_test_met}}, \code{\link{impute_met_files}},
   \code{\link{filter_regions}}
 }
 \author{

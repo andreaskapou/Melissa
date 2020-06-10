@@ -4,11 +4,24 @@
 \alias{melissa_gibbs}
 \title{Gibbs sampling algorithm for Melissa model}
 \usage{
-melissa_gibbs(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
-  w_0_mean = NULL, w_0_cov = NULL, dir_a = rep(1, K), lambda = 1/2,
-  gibbs_nsim = 1000, gibbs_burn_in = 200, inner_gibbs = FALSE,
-  gibbs_inner_nsim = 50, is_parallel = TRUE, no_cores = NULL,
-  is_verbose = FALSE)
+melissa_gibbs(
+  X,
+  K = 2,
+  pi_k = rep(1/K, K),
+  w = NULL,
+  basis = NULL,
+  w_0_mean = NULL,
+  w_0_cov = NULL,
+  dir_a = rep(1, K),
+  lambda = 1/2,
+  gibbs_nsim = 1000,
+  gibbs_burn_in = 200,
+  inner_gibbs = FALSE,
+  gibbs_inner_nsim = 50,
+  is_parallel = TRUE,
+  no_cores = NULL,
+  is_verbose = FALSE
+)
 }
 \arguments{
 \item{X}{A list of length I, where I are the total number of cells. Each

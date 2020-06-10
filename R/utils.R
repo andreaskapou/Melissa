@@ -178,12 +178,13 @@ partition_dataset <- function(dt_obj, data_train_prcg = 0.5,
 }
 
 
-#' @title Impute/predict methylation states
+#' @title Impute/predict test methylation states
 #'
 #' @description Make predictions of missing methylation states, i.e. perfrom
 #'   imputation using Melissa. This requires keepin a subset of data as a held
-#'   out test set during Melissa inference.
-#'
+#'   out test set during Melissa inference. If you want to impute a whole
+#'   directory containing cells (files) with missing methylation levels, see
+#'   \code{\link{impute_met_files}}.
 #' @param obj Output of Melissa inference object.
 #' @param test Test data to evaluate performance.
 #' @param basis Basis object, if NULL we perform imputation using Melissa,
@@ -210,18 +211,19 @@ partition_dataset <- function(dt_obj, data_train_prcg = 0.5,
 #' basis_obj <- BPRMeth::create_rbf_object(M = 3)
 #'
 #' # Run Melissa
-#' melissa_obj <- melissa(X = dt$met, K = 2, basis = basis_obj, vb_max_iter = 10,
+#' melissa_obj <- melissa(X = dt$met, K = 2, basis = basis_obj, vb_max_iter=10,
 #'    vb_init_nstart = 1, is_parallel = FALSE, is_verbose = FALSE)
 #'
-#' imputation_obj <- impute_met_state(obj = melissa_obj, test = dt$met_test)
+#' imputation_obj <- impute_test_met(obj = melissa_obj,
+#'                                    test = dt$met_test)
 #'
 #' @seealso \code{\link{create_melissa_data_obj}}, \code{\link{melissa}},
-#' \code{\link{filter_regions}}, \code{\link{eval_imputation_performance}},
-#' \code{\link{eval_cluster_performance}}
+#'   \code{\link{filter_regions}}, \code{\link{eval_imputation_performance}},
+#'   \code{\link{eval_cluster_performance}}
 #'
 #' @export
-impute_met_state <- function(obj, test, basis = NULL, is_predictive = TRUE,
-                             return_test = FALSE){
+impute_test_met <- function(obj, test, basis = NULL,
+                             is_predictive = TRUE, return_test = FALSE){
   N         <- length(test)                      # Number of cells
   test_pred <- test                              # Copy test data
   act_obs   <- vector(mode = "list", length = N) # Keep actual CpG states
@@ -254,11 +256,11 @@ impute_met_state <- function(obj, test, basis = NULL, is_predictive = TRUE,
           # Get cluster assignment
           k <- which.max(obj$r_nk[n,])
           test_pred[[n]][[m]][,2] <- eval_probit_function(obj = obj$basis,
-                                  obs = test[[n]][[m]][, 1], w = obj$W[m,,k])
+                            obs = test[[n]][[m]][, 1], w = obj$W[m,,k])
         }
       }else{
         test_pred[[n]][[m]][,2] <- eval_probit_function(obj = basis,
-                                  obs = test[[n]][[m]][, 1], w = obj[m,,n])
+                            obs = test[[n]][[m]][, 1], w = obj[m,,n])
       }
       # TODO
       # Actual CpG states
@@ -279,6 +281,186 @@ impute_met_state <- function(obj, test, basis = NULL, is_predictive = TRUE,
                 pred_obs = do.call("c", pred_obs)))
   }
 }
+
+
+#' @title Impute/predict methylation files
+#'
+#' @description Make predictions of missing methylation states, i.e. perfrom
+#'   imputation using Melissa. Each file in the directory will be used as input
+#'   and a new file will be created in \code{outdir} with an additional column
+#'   containing the predicted met state (value between 0 and 1). Note that
+#'   predictions will be made only on \code{annotation regions} that were used
+#'   for training Melissa. Check \code{\link{impute_test_met}}, if you want to
+#'   make predictions only on test data.
+#' @param met_dir Directory of methylation files, each file corresponds to a
+#'   single cell. It should contain three columns <chr> <pos> <met_state>
+#'   (similar to the input required by \code{\link{create_melissa_data_obj}}),
+#'   where \code{met_state} can be any value that denotes missing CpG
+#'   information, e.g. -1. Note that files can contain also CpGs for which we
+#'   have coverage information, and we can check the predictions made by
+#'   Melissa, hence the value can also be 0 (unmet) or (1) met. Predictions made
+#'   by Melissa, will not change the <met_state> column. Melissa will just add
+#'   an additional column named <predicted>.
+#' @param outdir Directory to store the output files for each cell with exactly
+#'   the same name. If NULL, then a directory called `imputed` inside `met_dir`
+#'   will be created by default.
+#' @param obj Output of Melissa inference object.
+#' @param anno_region Annotation region object. This will be the outpuf of
+#'   \code{\link{create_melissa_data_obj}} function, e..g
+#'   melissa_data$anno_region. This is required to select those regions that
+#'   were used to train Melissa.
+#' @param basis Basis object, if NULL we perform imputation using Melissa,
+#'   otherwise using BPRMeth (then \code{obj} should be BPRMeth output).
+#' @param is_predictive Logical, use predictive distribution for imputation, or
+#'   choose the cluster label with the highest responsibility.
+#' @param no_cores Number of cores to be used for parallel processing of data.
+#'
+#' @return A new directory \code{outdir} containing files (cells) with predicted
+#'   / imputed methylation states per CpG location.
+#'
+#'
+#' @author C.A.Kapourani \email{C.A.Kapourani@@ed.ac.uk}
+#'
+#' @examples
+#' \dontrun{
+#' # Met directory
+#' met_dir <- "name_of_met_dir"
+#' # Annotation file name
+#' anno_file <- "name_of_anno_file"
+#' # Create data object
+#' melissa_data <- create_melissa_data_obj(met_dir, anno_file)
+#' # Run Melissa
+#' melissa_obj <- melissa(X = melissa_data$met, K = 2)
+#' # Annotation object
+#' anno_region <- melissa_data$anno_region
+#'
+#' # Peform imputation
+#' impute_met_dir <- "name_of_met_dir_for_imputing_cells"
+#' out <- impute_met_files(met_dir = impute_met_dir, obj = melissa_obj,
+#'                         anno_region = anno_region)
+#' }
+#'
+#'
+#' @seealso \code{\link{create_melissa_data_obj}}, \code{\link{melissa}},
+#'   \code{\link{filter_regions}}
+#'
+#' @export
+impute_met_files <- function(met_dir, outdir = NULL, obj, anno_region,
+                             basis = NULL, is_predictive = TRUE, no_cores = NULL) {
+
+  # Vector of filenames to perform imputation
+  met_files <- setdiff(list.files(path = met_dir, full.names = FALSE),
+                       list.dirs(path = met_dir, recursive = FALSE,
+                                 full.names = FALSE))
+  # The out directory will be inside `met_dir/imputed`
+  if (is.null(outdir)) {
+    outdir <- paste0(met_dir, "/imputed/")
+  }
+  # Create out directory if it doesn't exist
+  ifelse(!dir.exists(outdir), dir.create(outdir), FALSE)
+
+  if (is.null(no_cores)) {
+    test_met <- lapply(X = met_files, FUN = function(file){
+      .impute_files_internal(file = file, met_dir = met_dir, outdir = outdir,
+                             obj = obj,
+                             anno_region = anno_region, basis = basis,
+                             is_predictive = is_predictive)
+    })
+  } else {
+    test_met <- parallel::mclapply(X = met_files, FUN = function(file) {
+      .impute_files_internal(file = file, met_dir = met_dir, outdir = outdir,
+                             obj = obj,
+                             anno_region = anno_region, basis = basis,
+                             is_predictive = is_predictive)
+    }, mc.cores = no_cores)
+  }
+  return(1)
+}
+
+
+# Internal function for imputing file
+.impute_files_internal <- function(file, met_dir, outdir, obj,
+                                   anno_region, basis = NULL,
+                                   is_predictive = TRUE) {
+  # So we can pass Build without NOTEs
+  coordinates = pos = chr <- NULL
+  # Read scBS seq data
+  met_dt <- BPRMeth::read_met(file = sprintf("%s/%s", met_dir, file),
+                              type = "sc_seq", strand_info = FALSE)
+  # Create promoter methylation regions
+  met_region <- BPRMeth::create_region_object(met_dt = met_dt,
+                    anno_dt = anno_region, cov = 1, sd_thresh = -1,
+                    ignore_strand = TRUE, filter_empty_region = FALSE)$met
+  # Add additional column for predicted values
+  met_region <- lapply(X = met_region, FUN = function(x){
+    if (!is.na(x)) {
+      return(cbind(x, rep(-1, NROW(x))))
+    } else {
+      return(NA)
+    }
+  })
+
+  # Obtain cell ID
+  cell_id <- sub(".gz|.zip|.bz2|.rar|.7z","", file)
+  # Match test with train cell ID
+  n <- which(rownames(obj$r_nk) == cell_id)
+  if (length(n) == 0) {
+    warning("Cell ID:", cell_id, " was not used for training.\n",
+            "Skipping imputation of CpG states for this file.")
+    return(-1)
+  }
+
+  # Regions that have CpG observations for prediction
+  idx <- which(!is.na(met_region))
+  # Iterate over each genomic region
+  for (m in idx) {
+    # When joint imputation method
+    if (is.null(basis)) {
+      K <- NCOL(obj$r_nk) # Number of clusters
+      # If we use the predictive density for imputation
+      if (is_predictive) {
+        tmp_mixt <- vector("numeric", length = length(met_region[[m]][, 1]))
+        for (k in seq_len(K)) {
+          # Evalute profile from weighted predictive
+          tmp_mixt <- tmp_mixt + obj$r_nk[n,k] *
+            eval_probit_function(obj = obj$basis,
+                                 obs = met_region[[m]][, 1],
+                                 w = obj$W[m,,k])
+        }
+        # Evaluate the methylation profile
+        met_region[[m]][,3] <- tmp_mixt
+      }else{
+        # Get cluster assignment
+        k <- which.max(obj$r_nk[n,])
+        met_region[[m]][,3] <- eval_probit_function(obj = obj$basis,
+                          obs = met_region[[m]][, 1], w = obj$W[m,,k])
+      }
+    }else{
+      met_region[[m]][,3] <- eval_probit_function(obj = basis,
+                          obs = met_region[[m]][, 1], w = obj[m,,n])
+    }
+  }
+  # Remove region names prior to merging the list
+  names(met_region) <- NULL
+  # Merge data and create final object
+  pred_obj <- data.table::as.data.table(do.call(rbind, met_region),
+                                        keep.rownames = "coordinates") %>%
+    stats::na.omit() %>%
+    .[, c("chr", "pos") := data.table::tstrsplit(coordinates, ":",
+                                                 fixed = TRUE)] %>%
+    .[, pos := as.numeric(pos)] %>%
+    .[, c("chr", "pos", "V2", "V3")] %>%
+    data.table::setnames(c("chr", "pos", "met_state", "predicted")) %>%
+    data.table::setkey(chr, pos)
+
+  # Store imputed file
+  outfile <- sprintf("%s/%s", outdir, cell_id)
+  data.table::fwrite(x = pred_obj, file = outfile, sep = "\t")
+
+  return(1)
+}
+
+
 
 
 #' @title Evaluate imputation performance
@@ -313,7 +495,7 @@ impute_met_state <- function(obj, test, basis = NULL, is_predictive = TRUE,
 #' melissa_obj <- melissa(X = dt$met, K = 2, basis = basis_obj, vb_max_iter = 10,
 #'   vb_init_nstart = 1, is_parallel = FALSE, is_verbose = FALSE)
 #'
-#' imputation_obj <- impute_met_state(obj = melissa_obj, test = dt$met_test)
+#' imputation_obj <- impute_test_met(obj = melissa_obj, test = dt$met_test)
 #'
 #' melissa_obj <- eval_imputation_performance(obj = melissa_obj,
 #'                                            imputation_obj = imputation_obj)
@@ -321,8 +503,9 @@ impute_met_state <- function(obj, test, basis = NULL, is_predictive = TRUE,
 #' cat("AUC: ", melissa_obj$imputation$auc)
 #'
 #' @seealso \code{\link{create_melissa_data_obj}}, \code{\link{melissa}},
-#' \code{\link{filter_regions}}, \code{\link{eval_imputation_performance}},
-#' \code{\link{eval_cluster_performance}}
+#'   \code{\link{impute_test_met}}, \code{\link{filter_regions}},
+#'   \code{\link{eval_imputation_performance}},
+#'   \code{\link{eval_cluster_performance}}
 #'
 #' @export
 #'
@@ -431,6 +614,8 @@ cluster_error <- function(C_true, C_post){
 #'
 #' @return The clustering ARI.
 #'
+#' @importFrom mclust adjustedRandIndex
+#'
 #' @author C.A.Kapourani \email{C.A.Kapourani@@ed.ac.uk}
 #'
 cluster_ari <- function(C_true, C_post){
@@ -440,7 +625,7 @@ cluster_ari <- function(C_true, C_post){
   C_est_lab <- unlist(apply(C_post, 1,
                             function(x) which(x == max(x, na.rm = TRUE))[1]))
   # Compute the overall clustering ARI
-  ari <- clues::adjustedRand(C_true_lab, C_est_lab, randMethod = "HA")
+  ari <- mclust::adjustedRandIndex(x = C_true_lab, y = C_est_lab)
   return(ari)
 }
 

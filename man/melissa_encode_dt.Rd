@@ -4,13 +4,15 @@
 \name{melissa_encode_dt}
 \alias{melissa_encode_dt}
 \title{Synthetic ENCODE single cell methylation data}
-\format{A list object containing methylation regions, annotation data and the
+\format{
+A list object containing methylation regions, annotation data and the
   options used for creating the data. This in general would be the output of
   the \code{\link{create_melissa_data_obj}} function. It has the following
   three objects: \itemize{ \item{ \code{met}: A list containing the
   methylation data, each element of the list is a different cell.} \item{
   \code{anno_region}: Corresponding annotation data for each genomic region.}
-  \item{ \code{opts}: Parameters/options used to generate the data.} }}
+  \item{ \code{opts}: Parameters/options used to generate the data.} }
+}
 \usage{
 melissa_encode_dt
 }

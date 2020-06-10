@@ -72,13 +72,13 @@ dt_obj$opts$C_true <- dt_obj$opts$C_true[1:50,]
 ```
 
 
-The structure of the `dt_obj` is a list of three elements, which only the `met` element is of direct interest, the remaining ones are mostly for keeping metadata information and information about the data generating / processing procedure. 
+The structure of the `dt_obj` is a list of three elements: `met` contains the methylation data, `anno_region` contains the genomic regions that we will run Melissa (since these are synthetic data, this element is NULL), `opts` contains metadata information about the data generating/processing procedure. 
 ```{r}
 # Elements of `dt_obj` object
 names(dt_obj)
 ```
 
-From the $2^{nd}$ cell we can access the $50^{th}$ genomic region using the following code, where the 1st column represents the relative CpG location within the region (scaled to [-1, 1] interval) and the 2nd column represents the methylation state: 1 = methylated and 0 = unmethylated.
+From the $2^{nd}$ cell we can access the $50^{th}$ genomic region using the following code, where the 1st column represents the relative CpG location within the region (scaled to [-1, 1] interval) and the 2nd column represents the methylation state: 1 = methylated and 0 = unmethylated. The matrix `rownames` contain the actual CpG coordinates, for real data this would be in the format: `<chr>:<CpG location>`.
 ```{r}
 head(dt_obj$met[[2]][[50]])
 ```
@@ -108,13 +108,13 @@ The `rbf` object contains information such as the centre locations $\mu_{j}$ and
 basis_obj
 ```
 
-# Clustering and imputing scBS-seq data
+# Clustering and imputing synthetic scBS-seq data
 Now we are ready to perfrom inference using the Melissa model and jointly cluster cells based on their DNA methylation landscape and impute missing CpG methylation states. 
 
 ## Partitioning to training and test set (Optional)
-To be able to evaluate the imputation performance of Melissa, we need ground truth labels of methylation states. To do so, we can partition the original dataset to training and test set, where a subset of CpGs will be used for training and the remaining sites for testing. For instance in a genomic region with 50 CpGs, 35 will be used for training and the remaining will be used for testing. We should highlight that the partitioning is at the genomic region level and not at the cell level, so we do not have to impute the methylome of a whole cell (which is not practically useful from the first place). 
+To be able to evaluate the imputation performance of Melissa, we need ground truth labels of methylation states. To do so, we can partition the original dataset to training and test set, where a subset of CpGs will be used for training and the remaining sites for testing. For instance in a genomic region with 50 CpGs, 35 will be used for training and the remaining will be used for testing. We should highlight that the partitioning is at the genomic region level and not at the cell level, so we do not have to impute the methylome of a whole cell. 
 
-__Note__ that this process is optional and is required only for being able to evaluate how well Melissa performs imputation. The user can skip the partitioning step and directly run Melissa on the whole dataset. For real scBS-seq data the user can use the inferred profiles to impute CpGs with no coverage at all. 
+__Note__ that this process is optional and is required only for being able to evaluate how well Melissa performs imputation. The user can skip the partitioning step and directly run Melissa on the whole dataset. For real scBS-seq data the user can use the inferred profiles to impute CpGs with no coverage at all (__Check next section on a process of how to run Melissa to impute data for non-covered CpGs__). 
 ```{r partition_data}
 set.seed(15)
 # Partition to training and test set
@@ -125,13 +125,14 @@ dt_obj <- partition_dataset(dt_obj = dt_obj, data_train_prcg = 0.2,
 This code snippet, will update the `met` element of the `dt_obj` to retain only the CpGs used as training set and the test set will be now stored in the `met_test` element in the same object. Note that during inference, Melissa will only have access to the training data and will ignore totally the test set. For more details on the usage of the additional parameters type `?partition_dataset`.
 
 ## Running Melissa model
-Whether or not a subset of the data was used as test set, the command for running Melissa remains the same. We need to provide it with the (training) data `X`, the number of clusters `K` that we expect to find in the cell population, the basis function object and with initial values for the hyperparameters. In this example, we will mostly keep the default values for the (hyper)-parameters.
+Whether or not a subset of the data was used as test set, the command for running Melissa remains the same. We need to provide it with the (training) data `X`, the number of clusters `K` that we expect to find in the cell population, the basis function object and with initial values for the hyperparameters. In this example, we will mostly keep the default values for the (hyper)-parameters. __Note__ that in real applications we should set `vb_max_iter` to a much larger value, e.g. 500, and `vb_init_nstart` around 10, to ensure we obtain the best initial values when running VB.
 
 ```{r run_melissa}
 set.seed(15)
 # Run Melissa with K = 4 clusters
 melissa_obj <- melissa(X = dt_obj$met, K = 4, basis = basis_obj,
-                       vb_max_iter = 20, vb_init_nstart = 1, is_parallel = FALSE)
+                       vb_max_iter = 20, vb_init_nstart = 1, 
+                       is_parallel = FALSE)
 ```
 
 ### Output summary
@@ -140,28 +141,28 @@ We can check the mixing proportions for each cluster, to obtain an estimate of t
 melissa_obj$pi_k
 ```
 
-The posterior probabilities of each cell belonging to a certain cluster (__responsibilities__) are stored in the `r_nk` element. Here each column represents a different cluster and each row a different cell.
+The posterior probabilities of each cell belonging to a certain cluster (__responsibilities__) are stored in the `r_nk` element. Here each column represents a different cluster and each row a different cell (as shown by `rownames` of the matrix).
 ```{r summary_responsibilities}
 head(melissa_obj$r_nk)
 ```
 
 The posterior mean methylation profile of each genomic region and cell subtype is stored in the `W` element. We can access the posterior weights of the 10th genomic region for the 2nd cell subpopulation. Here each element of the vector corresponds to a basis function, except the first element which corresponds to the bias term.
 ```{r summary_weights}
-melissa_obj$W[10, , 3]
+melissa_obj$W[10, , 2]
 ```
 
 ### Plottting methylation profiles
 We can plot methylation profiles of each cell subtype for specific genomic regions using the `plot_melissa_profiles` function.
 ```{r plot_profiles_1, fig.wide=TRUE}
-# Plot profiles from all cell subtypes for genomic region 22
-plot_melissa_profiles(melissa_obj = melissa_obj, region = 22, 
-                      title = "Methylation profiles for region 22")
+# Plot profiles from all cell subtypes for genomic region 25
+plot_melissa_profiles(melissa_obj = melissa_obj, region = 25, 
+                      title = "Methylation profiles for region 25")
 ```
 
 ```{r plot_profiles_2, fig.wide=TRUE}
-# Plot profiles from all cell subtypes for genomic region 77
-plot_melissa_profiles(melissa_obj = melissa_obj, region = 77, 
-                      title = "Methylation profiles for region 77")
+# Plot profiles from all cell subtypes for genomic region 90
+plot_melissa_profiles(melissa_obj = melissa_obj, region = 90, 
+                      title = "Methylation profiles for region 90")
 ```
 
 
@@ -187,13 +188,14 @@ As we can observe Melissa clustered perfectly the synthetic data, which are also
 ### Evaluating imputation performance
 To evaluate the imputation performance of Melissa, we use the held out test set and compare the true methylation state of each CpG with the predicted methylation value, which is the evaluation of the latent methylation profile at the corresponding location.
 ```{r perfrom_imputation}
-imputation_obj <- impute_met_state(obj = melissa_obj, test = dt_obj$met_test)
+imputation_obj <- impute_test_met(obj = melissa_obj, 
+                                  test = dt_obj$met_test)
 ```
 
 Now we use different metrics to evaluate the prediction performance, such as AUC, ROC curve and precision-recall curves and store them as elements in `melissa_obj` object.
 ```{r evaluate_imputation}
 melissa_obj <- eval_imputation_performance(obj = melissa_obj, 
-                                           imputation_obj = imputation_obj)
+                                           imputation_obj=imputation_obj)
 ```
 
 ```{r auc}
@@ -206,6 +208,61 @@ cat("AUC: ", melissa_obj$imputation$auc)
 cat("F-measure: ", melissa_obj$imputation$f_measure)
 ```
 
+# Clustering and imputing real scBS-seq data
+The above section, mostly focused on showing how we can evaluate Melissa's clustering and imputation performance by partitioning the data in training and test set. In common scenarios, we want to use all covered CpGs to infer the methylation patterns and cluster the single cells based on their methylome. Then try and impute the methylation state of CpGs for which we have missing information, and are stored in another file. Below we show the steps how to perform this analysis.
+```{r real_data, eval=FALSE}
+# Observed binarised met file format:
+# chr pos met_state 
+# 1   11  0
+# X   15  1
+
+# To impute met file format:
+# chr pos met_state
+# 1   20  -1 
+# X   25  -1
+# X   44  0
+
+# Imputed met file format:
+# chr pos met_state predicted
+# 1   20    -1      0.74
+# X   25    -1      0.1
+# X   44    0       0.05
+
+# Directory of files (cells) with binarised methylation data. Each row 
+# contains CpGs that we have coverage and will be used to infer 
+# methylation profiles with Melissa.
+met_dir <- "directory_of_observed_met_data"
+
+# Directory of files (cells, filenames and their structure should 
+# match with those in met_dir) to make predictions. Each row corresponds 
+# to a CpG that we will impute its value. It can contain both CpGs 
+# with and without CpG coverage. Those CpGs without coverage the third 
+# column can be any value, e.g. -1. Melissa will create a new folder 
+# with the same filenames, but including a new column named <predicted>, 
+# corresponding the imputed value.
+impute_met_dir <- "directory_of_cells_to_impute_CpGs"
+
+# Annotation file name for creating genomic regions of interest
+anno_file <- "name_of_anno_file"
+
+# Create melissa data object
+melissa_data <- create_melissa_data_obj(met_dir, anno_file)
+
+# Run Melissa
+melissa_obj <- melissa(X = melissa_data$met, K = 2)
+
+# Extract annotation region object
+anno_region <- melissa_data$anno_region
+
+# Peform imputation. This function will create a new folder with 
+# imputed met values for each cell. Note that the new files will only 
+# contain imputed values for CpGs that fall in `anno_region`, since 
+# Melissa can predict values only within these regions.
+out <- impute_met_files(met_dir = impute_met_dir, obj = melissa_obj,
+                        anno_region = anno_region)
+```
+
+
 # Session Info
 This vignette was compiled using:
 ```{r session_info, echo=TRUE, message=FALSE}
@@ -214,7 +271,7 @@ sessionInfo()
 
 
 # Bibliography
-[1] Kapourani, C. A., & Sanguinetti, G. (2018). Melissa: Bayesian clustering and imputation of single cell methylomes. __bioRxiv__, 312025, DOI: [https://doi.org/10.1101/312025](https://doi.org/10.1101/312025)
+[1] Kapourani, C. A., & Sanguinetti, G. (2019). Melissa: Bayesian clustering and imputation of single cell methylomes. __Genome Biology__, 20(1), 61, DOI: [https://doi.org/10.1186/s13059-019-1665-8](https://doi.org/10.1186/s13059-019-1665-8)
 
 [2] Kapourani, C. A., & Sanguinetti, G. (2016). Higher order methylation features for clustering and prediction in epigenomic studies. __Bioinformatics__, 32(17), i405-i412, DOI: [https://doi.org/10.1093/bioinformatics/btw432](https://doi.org/10.1093/bioinformatics/btw432)
 
