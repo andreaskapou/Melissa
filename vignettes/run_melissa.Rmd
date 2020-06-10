@@ -248,6 +248,15 @@ anno_file <- "name_of_anno_file"
 # Create melissa data object
 melissa_data <- create_melissa_data_obj(met_dir, anno_file)
 
+# QC and filtering regions 
+# By CpG coverage
+melissa_data <- filter_by_cpg_coverage(melissa_data, min_cpgcov = 5)
+# By methylation variability
+melissa_data <- filter_by_variability(melissa_data, min_var = 0.1)
+# By genomic coverage across cells
+melissa_data <- filter_by_coverage_across_cells(melissa_data, 
+                                                min_cell_cov_prcg = 0.3)
+
 # Run Melissa
 melissa_obj <- melissa(X = melissa_data$met, K = 2)
 
