@@ -143,6 +143,7 @@ generate_bpr_data <- function(basis, w, max_cov = 25, xmin = -1000, xmax=1000){
   x <- matrix(0, nrow = L, ncol = 2)
   # Randomly sample locations for the CpGs
   obs <- sort(sample(xmin:xmax, L))
+  rownames(x) <- paste("loc", obs, sep = ":")
   # Scale to (-1,1)
   x[, 1] <- BPRMeth:::.minmax_scaling(data = obs, xmin = xmin, xmax = xmax,
                                       fmin = -1,fmax = 1)

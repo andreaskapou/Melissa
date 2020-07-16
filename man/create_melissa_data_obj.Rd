@@ -4,10 +4,19 @@
 \alias{create_melissa_data_obj}
 \title{Create methylation regions for all cells}
 \usage{
-create_melissa_data_obj(met_dir, anno_file, chrom_size_file = NULL,
-  chr_discarded = NULL, is_centre = FALSE, is_window = TRUE,
-  upstream = -5000, downstream = 5000, cov = 5, sd_thresh = -1,
-  no_cores = NULL)
+create_melissa_data_obj(
+  met_dir,
+  anno_file,
+  chrom_size_file = NULL,
+  chr_discarded = NULL,
+  is_centre = FALSE,
+  is_window = TRUE,
+  upstream = -5000,
+  downstream = 5000,
+  cov = 5,
+  sd_thresh = -1,
+  no_cores = NULL
+)
 }
 \arguments{
 \item{met_dir}{Directory of (binarised) methylation files, each file
@@ -46,7 +55,7 @@ must contain.}
 the methylation change in a region. This is used to filter regions with no
 methylation variability.}
 
-\item{no_cores}{Number of cores to be used, default is max_no_cores - 1.}
+\item{no_cores}{Number of cores to be used for parallel processing of data.}
 }
 \value{
 A \code{melissa_data_obj} object, with the following elements:

@@ -1,7 +1,7 @@
 Package: Melissa
 Type: Package
 Title: Bayesian clustering and imputationa of single cell methylomes
-Version: 1.4.0
+Version: 1.4.1
 Authors@R: person("C. A.", "Kapourani", email = "kapouranis.andreas@gmail.com",
                   role = c("aut", "cre"))
 Description: Melissa is a Baysian probabilistic model for jointly clustering and 
@@ -15,13 +15,13 @@ Depends:
 License: GPL-3 | file LICENSE
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 6.1.1
+RoxygenNote: 7.1.0
 Imports: 
     data.table,
     parallel,
     ROCR,
     matrixcalc,
-    clues,
+    mclust,
     ggplot2,
     doParallel,
     foreach,

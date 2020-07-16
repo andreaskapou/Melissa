@@ -79,6 +79,7 @@
 #'
 #' @seealso \code{\link{create_melissa_data_obj}},
 #'   \code{\link{partition_dataset}}, \code{\link{plot_melissa_profiles}},
+#'   \code{\link{impute_test_met}}, \code{\link{impute_met_files}},
 #'   \code{\link{filter_regions}}
 #'
 #' @export
@@ -92,7 +93,14 @@ melissa <- function(X, K = 3, basis = NULL, delta_0 = NULL, w = NULL,
   assertthat::assert_that(vb_init_nstart > 0)  # Check for positive values
   assertthat::assert_that(vb_init_max_iter > 0)  # Check for positive value
   # Create RBF basis object by default
-  if (is.null(basis)) { basis <- BPRMeth::create_rbf_object(M = 3) }
+  if (is.null(basis)) {
+    warning("Basis object not defined. Using as default M = 3 RBFs.\n")
+    basis <- BPRMeth::create_rbf_object(M = 3)
+  }
+  # Remove rownames
+  for (n in 1:length(X)) {
+    X[[n]] <- lapply(X = X[[n]], function(x) {rownames(x) <- NULL; return(x)})
+  }
 
   N <- length(X)         # Total number of cells
   M <- length(X[[1]])    # Total number of genomic regions
@@ -107,9 +115,9 @@ melissa <- function(X, K = 3, basis = NULL, delta_0 = NULL, w = NULL,
   no_cores <- .parallel_cores(no_cores = no_cores,
                               is_parallel = is_parallel,
                               max_cores = N)
-  # List of genes with no coverage for each cell
+  # List of genes with coverage for each cell
   region_ind <- lapply(X = seq_len(N), FUN = function(n) which(!is.na(X[[n]])))
-  # List of cells with no coverage for each genomic region
+  # List of cells with coverage for each genomic region
   cell_ind <- lapply(X = seq_len(M), FUN = function(m) which(!is.na(lapply(X, "[[", m))))
   # Pre-compute the design matrices H for efficiency: each entry is a cell
   if (is_parallel) { H <- parallel::mclapply(X = seq_len(N), FUN = function(n)
@@ -197,10 +205,13 @@ melissa <- function(X, K = 3, basis = NULL, delta_0 = NULL, w = NULL,
   names(obj$pi_k) <- paste0("cluster", seq_len(K))
   # colnames(obj$W) <- paste0("cluster", seq_len(K))
   colnames(obj$r_nk) <- paste0("cluster", seq_len(K))
+  rownames(obj$r_nk) <- names(X)
   # Get hard cluster assignments for each observation
   # TODO: What should I do with cells that have the same r_nk across clusters?
+  # For now I take the first element returned from which..
   obj$labels <- apply(X = obj$r_nk, MARGIN = 1,
-                      FUN = function(x) which(x == max(x, na.rm = TRUE)))
+                      FUN = function(x) which(x == max(x, na.rm = TRUE))[1])
+  names(obj$labels) <- names(X)
   # Subtract \ln(K!) from lower bound to get a better estimate
   obj$lb <- obj$lb - log(factorial(K))
   # Return object

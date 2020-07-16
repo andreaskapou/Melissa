@@ -38,7 +38,7 @@ basis_obj <- BPRMeth::create_rbf_object(M = 3)
 melissa_obj <- melissa(X = dt$met, K = 2, basis = basis_obj, vb_max_iter = 10,
   vb_init_nstart = 1, is_parallel = FALSE, is_verbose = FALSE)
 
-imputation_obj <- impute_met_state(obj = melissa_obj, test = dt$met_test)
+imputation_obj <- impute_test_met(obj = melissa_obj, test = dt$met_test)
 
 melissa_obj <- eval_imputation_performance(obj = melissa_obj,
                                            imputation_obj = imputation_obj)
@@ -48,8 +48,9 @@ cat("AUC: ", melissa_obj$imputation$auc)
 }
 \seealso{
 \code{\link{create_melissa_data_obj}}, \code{\link{melissa}},
-\code{\link{filter_regions}}, \code{\link{eval_imputation_performance}},
-\code{\link{eval_cluster_performance}}
+  \code{\link{impute_test_met}}, \code{\link{filter_regions}},
+  \code{\link{eval_imputation_performance}},
+  \code{\link{eval_cluster_performance}}
 }
 \author{
 C.A.Kapourani \email{C.A.Kapourani@ed.ac.uk}

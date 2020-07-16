@@ -75,7 +75,16 @@ melissa_gibbs <- function(X, K = 2, pi_k = rep(1/K, K), w = NULL, basis = NULL,
   no_cores <- .parallel_cores(no_cores = no_cores,
                               is_parallel = is_parallel,
                               max_cores = N)
-  if (is.null(basis)) { basis <- BPRMeth::create_rbf_object(M = 3) }
+  # Create RBF basis object by default
+  if (is.null(basis)) {
+    warning("Basis object not defined. Using as default M = 3 RBFs.\n")
+    basis <- BPRMeth::create_rbf_object(M = 3)
+  }
+  # Remove rownames
+  for (n in 1:length(X)) {
+    X[[n]] <- lapply(X = X[[n]], function(x) {rownames(x) <- NULL; return(x)})
+  }
+
   M <- basis$M + 1    # Number of coefficient parameters
 
   # Initialize priors over the parameters

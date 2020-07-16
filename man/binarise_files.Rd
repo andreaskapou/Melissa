@@ -4,7 +4,7 @@
 \alias{binarise_files}
 \title{Binarise CpG sites}
 \usage{
-binarise_files(indir, outdir = NULL, no_cores = NULL)
+binarise_files(indir, outdir = NULL, format = 1, no_cores = NULL)
 }
 \arguments{
 \item{indir}{Directory containing the coverage files, output from Bismark.}
@@ -12,6 +12,11 @@ binarise_files(indir, outdir = NULL, no_cores = NULL)
 \item{outdir}{Directory to store the output files for each cell with exactly
 the same name. If NULL, then a directory called `binarised` inside `indir`
 will be create by default.}
+
+\item{format}{Integer, denoting the format of coverage file. When set to `1`,
+the coverage file format is assumed to be: "<chr> <start> <end> <met_prcg>
+<met_reads> <unmet_reads>". When set to `2`, then the format is assumed to
+be: "<chr> <start> <met_prcg> <met_reads> <unmet_reads>".}
 
 \item{no_cores}{Number of cores to use for parallel processing. If NULL, no
 parallel processing is used.}
@@ -23,7 +28,8 @@ No value is returned, the binarised data are stored in the outdir.
 Script for binarising CpG sites and formatting the coverage file
   so it can be directly used from the BPRMeth package. The format of each
   file is the following: <chr> <start> <met_level>, where met_level can be
-  either 0 or 1.
+  either 0 or 1. To read compressed files, e.g ending in .gz or .bz2, the
+  R.utils package needs to be installed.
 }
 \examples{
 \dontrun{
